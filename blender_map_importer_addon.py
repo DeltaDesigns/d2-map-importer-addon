@@ -34,7 +34,7 @@ class ImportD2Map(Operator, ImportHelper):
     config = None
     FilePath = None
     Name = None
-    type = None
+    type = "Map" #Default to map
 
     static_names = {} #original static objects
 
