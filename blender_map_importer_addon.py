@@ -102,8 +102,11 @@ def assemble_map(self, file, Filepath):
     Name = file.name[:-9] #Removes the _info.cfg from the name
     
     self.config = json.load(open(Filepath + f"\\{file.name}"))
-    self.type = self.config["Type"]
     
+    if "Type" in self.config:
+        self.type = self.config["Type"]
+
+    print(f"Type: {self.type}")
     print(f"Starting import on {self.type}: {Name}")
 
     #make a collection with the name of the imported fbx for the objects
