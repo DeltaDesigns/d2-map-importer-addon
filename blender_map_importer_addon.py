@@ -106,7 +106,7 @@ def assemble_map(self, file, Filepath):
     if "Type" in self.config:
         self.type = self.config["Type"]
 
-    print(f"Type: {self.type}")
+    
     print(f"Starting import on {self.type}: {Name}")
 
     #make a collection with the name of the imported fbx for the objects
@@ -116,9 +116,6 @@ def assemble_map(self, file, Filepath):
 
     bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
     
-    if self.use_import_materials:
-        assign_materials(self)
-
     add_to_collection(self) 
 
     newobjects = bpy.data.collections[str(Name)].objects
@@ -136,15 +133,16 @@ def assemble_map(self, file, Filepath):
                 tmp.append(obj.name[:8])
 
             #merge static parts into one object
-            for obj in tmp:
-                bpy.ops.object.select_all(action='DESELECT')
-                for meshes, mats in self.config["Parts"].items():
-                    if meshes[:8] == obj and meshes in bpy.context.view_layer.objects:
-                        print(meshes + " belongs to " + obj)
-                        bpy.data.objects[meshes].select_set(True)
-                        bpy.context.view_layer.objects.active = bpy.data.objects[meshes]
-                bpy.ops.object.join()
-            bpy.ops.outliner.orphans_purge()
+            if len(self.config["Parts"].items()) != 1:
+                for obj in tmp:
+                    bpy.ops.object.select_all(action='DESELECT')
+                    for meshes, mats in self.config["Parts"].items():
+                        if meshes[:8] == obj and meshes in bpy.context.view_layer.objects:
+                            print(meshes + " belongs to " + obj)
+                            bpy.data.objects[meshes].select_set(True)
+                            bpy.context.view_layer.objects.active = bpy.data.objects[meshes]
+                    bpy.ops.object.join()
+                bpy.ops.outliner.orphans_purge()
 
         #merge static parts into one object, Old method
         # for x in range(0, 4): #For some reason one pass doesnt work, this slows the import down a bit, idk a better fix
@@ -206,6 +204,9 @@ def assemble_map(self, file, Filepath):
             #Clear the scale and rotation of the entity
             bpy.ops.object.rotation_clear(clear_delta=False)
             bpy.ops.object.scale_clear(clear_delta=False)
+
+    if self.use_import_materials:
+        assign_materials(self)
 
     cleanup(self)
 
