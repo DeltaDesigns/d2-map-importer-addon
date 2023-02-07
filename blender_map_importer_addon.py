@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montegue/Monteven",
-    "version": (0, 2, 0),
+    "version": (0, 3, 0),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -134,15 +134,15 @@ def assemble_map(self, file, Filepath):
 
             #merge static parts into one object
             if len(self.config["Parts"].items()) != 1:
-	            for obj in tmp:
-	                bpy.ops.object.select_all(action='DESELECT')
-	                for meshes, mats in self.config["Parts"].items():
-	                    if meshes[:8] == obj and meshes in bpy.context.view_layer.objects:
-	                        print(meshes + " belongs to " + obj)
-	                        bpy.data.objects[meshes].select_set(True)
-	                        bpy.context.view_layer.objects.active = bpy.data.objects[meshes]
-	                bpy.ops.object.join()
-	            bpy.ops.outliner.orphans_purge()
+                for obj in tmp:
+                    bpy.ops.object.select_all(action='DESELECT')
+                    for meshes, mats in self.config["Parts"].items():
+                        if meshes[:8] == obj and meshes in bpy.context.view_layer.objects:
+                            print(meshes + " belongs to " + obj)
+                            bpy.data.objects[meshes].select_set(True)
+                            bpy.context.view_layer.objects.active = bpy.data.objects[meshes]
+                    bpy.ops.object.join()
+                bpy.ops.outliner.orphans_purge()
 
         newobjects = [] #Clears the list just in case
         newobjects = bpy.data.collections[str(Name)].objects #Readds the objects in the collection to the list
@@ -227,7 +227,7 @@ def assemble_map(self, file, Filepath):
             bpy.ops.object.scale_clear(clear_delta=False)
 
     if self.use_import_materials:
-    	assign_materials(self)
+        assign_materials(self)
 
     cleanup(self)
 
