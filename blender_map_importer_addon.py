@@ -21,6 +21,9 @@ from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty
 from bpy.types import Operator
 
+icons_dir = os.path.join(os.path.dirname(__file__), "icons")
+custom_icon_col = {}
+
 class ImportD2Map(Operator, ImportHelper):
     bl_idname = "d2map.import"        # Unique identifier for buttons and menu items to reference.
     bl_label = "Import .cfg"         # Display name in the interface.
@@ -414,13 +417,18 @@ def ShowMessageBox(message = "", title = "Message Box", icon = 'INFO'):
 
 
 def menu_func_import(self, context):
-    self.layout.operator(ImportD2Map.bl_idname, text="Destiny 2 Map Importer (.cfg)")
+    self.layout.operator(ImportD2Map.bl_idname, text="Destiny 2 Map Importer (.cfg)", icon_value=custom_icon_col["import"]['D2ICON'].icon_id)
 
 def register():
+    custom_icon = bpy.utils.previews.new()
+    custom_icon.load("D2ICON", os.path.join(icons_dir, "destiny_icon.png"), 'IMAGE')
+    custom_icon_col["import"] = custom_icon
+
     bpy.utils.register_class(ImportD2Map)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
 def unregister():
+    bpy.utils.previews.remove(custom_icon_col["import"])
     bpy.utils.unregister_class(ImportD2Map)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
 
