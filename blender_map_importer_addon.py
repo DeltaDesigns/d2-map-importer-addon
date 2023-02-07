@@ -134,28 +134,15 @@ def assemble_map(self, file, Filepath):
 
             #merge static parts into one object
             if len(self.config["Parts"].items()) != 1:
-                for obj in tmp:
-                    bpy.ops.object.select_all(action='DESELECT')
-                    for meshes, mats in self.config["Parts"].items():
-                        if meshes[:8] == obj and meshes in bpy.context.view_layer.objects:
-                            print(meshes + " belongs to " + obj)
-                            bpy.data.objects[meshes].select_set(True)
-                            bpy.context.view_layer.objects.active = bpy.data.objects[meshes]
-                    bpy.ops.object.join()
-                bpy.ops.outliner.orphans_purge()
-
-        #merge static parts into one object, Old method
-        # for x in range(0, 4): #For some reason one pass doesnt work, this slows the import down a bit, idk a better fix
-        #     for obj in tmp:
-        #         bpy.ops.object.select_all(action='DESELECT')
-        #         #print(obj)
-        #         for obj2 in newobjects:
-        #             if obj2.name[:8] == obj and obj in tmp:
-        #                 tmp.remove(obj)
-        #                 obj2.select_set(True)
-        #                 bpy.context.view_layer.objects.active = obj2
-        #         bpy.ops.object.join()
-        #         bpy.ops.outliner.orphans_purge()
+	            for obj in tmp:
+	                bpy.ops.object.select_all(action='DESELECT')
+	                for meshes, mats in self.config["Parts"].items():
+	                    if meshes[:8] == obj and meshes in bpy.context.view_layer.objects:
+	                        print(meshes + " belongs to " + obj)
+	                        bpy.data.objects[meshes].select_set(True)
+	                        bpy.context.view_layer.objects.active = bpy.data.objects[meshes]
+	                bpy.ops.object.join()
+	            bpy.ops.outliner.orphans_purge()
 
         newobjects = [] #Clears the list just in case
         newobjects = bpy.data.collections[str(Name)].objects #Readds the objects in the collection to the list
@@ -181,8 +168,42 @@ def assemble_map(self, file, Filepath):
 
             for part in parts:
                 for instance in instances:
-                    ob_copy = bpy.data.objects[part].copy()
-                    bpy.context.collection.objects.link(ob_copy) #makes the instances
+                    if bpy.data.objects[part].parent: #For dynamics with skeletons, need to copy the skeleton and meshes THEN reparent the copied meshes to the copied skeleton and change its armature modifier...
+                        if bpy.data.objects[part].parent.type == 'ARMATURE':
+                            ob_copy = bpy.data.objects[part].parent.copy()
+                            bpy.context.scene.collection.objects.link(ob_copy)
+                            print(f"Object '{bpy.data.objects[part].name}' is parented to an armature '{ob_copy.name}'")
+
+                            # Loop through the collections that the armature is linked to (idk why it does this)
+                            for collection in ob_copy.users_collection:
+                                # Unlink the armature from the collection
+                                collection.objects.unlink(ob_copy)
+
+                            # Loop through the children of the parent object
+                            for child in bpy.data.objects[part].parent.children:
+                                # Create a copy of the child object
+                                new_child = child.copy()
+                                # Add the copy to the scene
+                                bpy.context.scene.collection.objects.link(new_child)
+                                # Parent the new child to the new parent
+                                new_child.parent = ob_copy
+                                # Loop through the child's modifiers
+                                for modifier in new_child.modifiers:
+                                    # Check if the modifier is an armature modifier
+                                    if modifier.type == 'ARMATURE':
+                                        # Set the armature object in the modifier to the new armature
+                                        modifier.object = ob_copy
+
+                                for collection in new_child.users_collection: #...
+                                    # Unlink the armature from the collection
+                                    collection.objects.unlink(new_child)
+                                    
+                                bpy.context.view_layer.active_layer_collection.collection.objects.link(new_child) #add the child to the collection (again, idk why this is needed)
+                            # Move the new armature to the new collection
+                            bpy.context.view_layer.active_layer_collection.collection.objects.link(ob_copy)
+                    else:  
+                        ob_copy = bpy.data.objects[part].copy()
+                        bpy.context.collection.objects.link(ob_copy) #makes the instances
 
                     location = [instance["Translation"][0], instance["Translation"][1], instance["Translation"][2]]
                     #Reminder that blender uses WXYZ, the order in the confing file is XYZW, so W is always first
@@ -192,7 +213,7 @@ def assemble_map(self, file, Filepath):
                     ob_copy.rotation_mode = 'QUATERNION'
                     ob_copy.rotation_quaternion = quat
                     ob_copy.scale = [instance["Scale"]]*3
-        
+    
         if "Terrain" in self.type:
             for x in newobjects:
                 x.select_set(True)
@@ -206,7 +227,7 @@ def assemble_map(self, file, Filepath):
             bpy.ops.object.scale_clear(clear_delta=False)
 
     if self.use_import_materials:
-        assign_materials(self)
+    	assign_materials(self)
 
     cleanup(self)
 
@@ -234,6 +255,7 @@ def assign_materials(self):
                 slt.material = materials.get(part[0])
         
     #Get all the images in the directory and load them
+    #Should probably change this to only load the textures included in the cfg, as to not load unneeded textures
     for img in os.listdir(self.Filepath + "/Textures/"):
         if img.endswith(".png"):
             bpy.data.images.load(self.Filepath + "/Textures/" + f"/{img}", check_existing = True)
@@ -379,6 +401,8 @@ def Is_Map(self):
     if "Map" in self.type:
         return True
     if "Terrain" in self.type:
+        return True
+    if "Dynamics" in self.type:
         return True
     else:
         return False
