@@ -420,6 +420,7 @@ def menu_func_import(self, context):
     self.layout.operator(ImportD2Map.bl_idname, text="Destiny 2 Map Importer (.cfg)", icon_value=custom_icon_col["import"]['D2ICON'].icon_id)
 
 def register():
+    import bpy.utils.previews
     custom_icon = bpy.utils.previews.new()
     custom_icon.load("D2ICON", os.path.join(icons_dir, "destiny_icon.png"), 'IMAGE')
     custom_icon_col["import"] = custom_icon
