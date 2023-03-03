@@ -1,12 +1,13 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montegue/Monteven",
-    "version": (0, 3, 0),
+    "version": (0, 3, 1),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
     "warning": "BETA",
     "category": "Import",
+    "package": "d2_map_importer"
     }
 
 import bpy
@@ -24,11 +25,16 @@ from bpy.types import Operator
 icons_dir = os.path.join(os.path.dirname(__file__), "icons")
 custom_icon_col = {}
 
+#Update variables
+update_available = False
+patch_notes = ""
+latest_version = ""
+
 class ImportD2Map(Operator, ImportHelper):
     bl_idname = "d2map.import"        # Unique identifier for buttons and menu items to reference.
     bl_label = "Import .cfg"         # Display name in the interface.
     bl_options = {'UNDO', 'PRESET'}
-
+    
     @classmethod
     def poll(self, context):
         return context.mode == 'OBJECT'
@@ -72,10 +78,16 @@ class ImportD2Map(Operator, ImportHelper):
         layout = self.layout
 
         box = layout.box()
+        box.label(text="Current Version: " + current_version)
         box.label(text="Options:")
         box.prop(self, 'combine_statics')
         box.prop(self, 'use_import_materials')
-      
+
+        if update_available:
+            box = layout.box()
+            box.label(text="Update available: " + latest_version)
+            box.operator("wm.url_open", text="Get Latest Release").url = "https://github.com/DeltaDesigns/d2-map-importer-addon/releases/latest"
+
     def execute(self, context):        # execute() is called when running the operator.
 
         #Deselect all objects just in case 
@@ -106,6 +118,11 @@ def assemble_map(self, file, Filepath):
     
     self.config = json.load(open(Filepath + f"\\{file.name}"))
     
+    #Skip if theres nothing to import
+    if self.config["Instances"].items().__len__() == 0:
+        print(f"No instances found in {Name}, skipping...")
+        return
+
     if "Type" in self.config:
         self.type = self.config["Type"]
 
@@ -415,12 +432,42 @@ def ShowMessageBox(message = "", title = "Message Box", icon = 'INFO'):
         self.layout.label(text=message)
     bpy.context.window_manager.popup_menu(draw, title = title, icon = icon)
 
+import requests
+import json
+
+def check_for_updates():
+    global latest_version
+    global patch_notes
+    global current_version
+
+    repo_name = 'DeltaDesigns/d2-map-importer-addon' # replace with your own repository name
+    api_url = f'https://api.github.com/repos/{repo_name}/releases/latest'
+    headers = {'Accept': 'application/vnd.github.v3+json'} # use latest version of the API
+
+    try:
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status() # raise an exception if the API returns an error
+        data = json.loads(response.text)
+        latest_version = data['tag_name']
+        patch_notes = data['body']
+    except:
+        # something went wrong with the API request, handle the error
+        return
+
+    current_version = '.'.join(map(str, bl_info["version"]))
+    current_version = current_version.replace("v", "")
+    latest_version = latest_version.replace("v", "")
+
+    if latest_version != current_version:
+        return True
+
 
 def menu_func_import(self, context):
     self.layout.operator(ImportD2Map.bl_idname, text="Destiny 2 Map Importer (.cfg)", icon_value=custom_icon_col["import"]['D2ICON'].icon_id)
 
 def register():
     import bpy.utils.previews
+    
     custom_icon = bpy.utils.previews.new()
     custom_icon.load("D2ICON", os.path.join(icons_dir, "destiny_icon.png"), 'IMAGE')
     custom_icon_col["import"] = custom_icon
@@ -428,12 +475,14 @@ def register():
     bpy.utils.register_class(ImportD2Map)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
+    global update_available 
+    update_available = check_for_updates()
+
 def unregister():
     bpy.utils.previews.remove(custom_icon_col["import"])
     bpy.utils.unregister_class(ImportD2Map)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
 
-    
 # This allows you to run the script directly from Blender's Text editor
 # to test the add-on without having to install it.
 if __name__ == "__main__":
