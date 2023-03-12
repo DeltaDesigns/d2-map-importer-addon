@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montegue/Monteven",
-    "version": (0, 3, 1),
+    "version": (0, 3, 2),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -118,15 +118,14 @@ def assemble_map(self, file, Filepath):
     
     self.config = json.load(open(Filepath + f"\\{file.name}"))
     
-    #Skip if theres nothing to import
-    if self.config["Instances"].items().__len__() == 0:
-        print(f"No instances found in {Name}, skipping...")
-        return
-
     if "Type" in self.config:
         self.type = self.config["Type"]
 
-    
+    #Skip if theres nothing to import
+    if self.config["Instances"].items().__len__() == 0 and "Map" in self.type:
+        print(f"No instances found in {Name}, skipping...")
+        return
+ 
     print(f"Starting import on {self.type}: {Name}")
 
     #make a collection with the name of the imported fbx for the objects
