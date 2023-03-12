@@ -240,6 +240,12 @@ def assemble_map(self, file, Filepath):
 
     if not Is_Map(self):
         for x in newobjects:
+            print(x)
+            if len(self.config["Parts"].items()) <= 1: #Fix for error that occurs when theres only 1 object in the fbx
+                for newname, value in self.config["Parts"].items():
+                    x.name = newname
+
+        for x in newobjects:
             x.select_set(True)
             #Clear the scale and rotation of the entity
             bpy.ops.object.rotation_clear(clear_delta=False)
