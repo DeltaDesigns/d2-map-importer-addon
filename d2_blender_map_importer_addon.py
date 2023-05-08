@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
-    "author": "DeltaDesigns, Montegue/Monteven",
-    "version": (0, 3, 2),
+    "author": "DeltaDesigns, Montague/Monteven",
+    "version": (0, 3, 5),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -73,6 +73,12 @@ class ImportD2Map(Operator, ImportHelper):
             description="Imports textures and tries to apply them to the models",
             default=True,
             )
+    
+    import_individual_fbx: BoolProperty(
+            name="Import Individual FBX (Read tooltip!)",
+            description="REQUIRES DELTADESIGNS' CUSTOM BUILD OF CHARM!\n\nExport individual Static and Entites settings in Charm must be True.\n\nExperimental, Not guaranteed to be faster",
+            default=False,
+            )
 
     def draw(self, context):
         layout = self.layout
@@ -82,11 +88,16 @@ class ImportD2Map(Operator, ImportHelper):
         box.label(text="Options:")
         box.prop(self, 'combine_statics')
         box.prop(self, 'use_import_materials')
+        box.prop(self, 'import_individual_fbx')
 
         if update_available:
             box = layout.box()
             box.label(text="Update available: " + latest_version)
             box.operator("wm.url_open", text="Get Latest Release").url = "https://github.com/DeltaDesigns/d2-map-importer-addon/releases/latest"
+
+        box = layout.box()
+        box.label(text="Unofficial Charm")
+        box.operator("wm.url_open", text="Get the Unofficial Charm build here").url = "https://github.com/DeltaDesigns/Charm/releases"
 
     def execute(self, context):        # execute() is called when running the operator.
 
@@ -133,7 +144,21 @@ def assemble_map(self, file, Filepath):
     bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
 
-    bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
+    if self.import_individual_fbx:
+        for static, instances in self.config["Instances"].items():
+            fbx_path = os.path.join(Filepath, Filepath + f"\\{'Dynamics' if 'Dynamics' in self.type else 'Statics'}\\", f"{static+'_Terrain' if 'Terrain' in self.type else static}.fbx")
+            
+            bpy.ops.import_scene.fbx(filepath=fbx_path, use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
+            print(f"Imported FBX: {static}")
+            # Select all the meshes that were imported
+            meshes = [obj for obj in bpy.context.selected_objects if obj.type == 'MESH']
+
+            # Join the meshes into one if there's more than one
+            if len(meshes) > 1:
+                bpy.context.view_layer.objects.active = meshes[0]
+                bpy.ops.object.join()
+    else:
+        bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
     
     add_to_collection(self) 
 
@@ -143,7 +168,7 @@ def assemble_map(self, file, Filepath):
     
     #Merge statics, create instances for maps only
     if Is_Map(self):
-        if self.combine_statics:
+        if self.combine_statics and not self.import_individual_fbx:
             print("Merging Map Statics... ")
             tmp = []
             for obj in newobjects:
@@ -239,6 +264,7 @@ def assemble_map(self, file, Filepath):
                 bpy.ops.object.rotation_clear(clear_delta=False) #Clears the rotation of the terrain
 
     if not Is_Map(self):
+
         for x in newobjects:
             print(x)
             if len(self.config["Parts"].items()) <= 1: #Fix for error that occurs when theres only 1 object in the fbx
@@ -463,7 +489,13 @@ def check_for_updates():
     current_version = current_version.replace("v", "")
     latest_version = latest_version.replace("v", "")
 
-    if latest_version != current_version:
+    cur_version_parts = current_version.split(".")
+    cur_version_number = int(cur_version_parts[0]) * 100 + int(cur_version_parts[1]) * 10 + int(cur_version_parts[2])
+
+    lat_version_parts = latest_version.split(".")
+    lat_version_number = int(lat_version_parts[0]) * 100 + int(lat_version_parts[1]) * 10 + int(lat_version_parts[2])
+
+    if lat_version_number > cur_version_number:
         return True
 
 
