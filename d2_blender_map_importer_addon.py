@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 3, 5),
+    "version": (0, 3, 6),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -64,19 +64,19 @@ class ImportD2Map(Operator, ImportHelper):
 
     combine_statics: BoolProperty(
             name="Combine Static Meshes",
-            description="Combine all parts of a model into one mesh",
+            description="Combine all parts of a model into one mesh\nWill slow down import but will increase performace",
             default=True,
             )
 
     use_import_materials: BoolProperty(
             name="Import Textures",
-            description="Imports textures and tries to apply them to the models",
+            description="Imports textures and tries to apply them to the models\nTextures folder must be in the same place as the .cfg you are importing",
             default=True,
             )
     
     import_individual_fbx: BoolProperty(
             name="Import Individual FBX (Read tooltip!)",
-            description="REQUIRES DELTADESIGNS' CUSTOM BUILD OF CHARM!\n\nExport individual Static and Entites settings in Charm must be True.\n\nExperimental, Not guaranteed to be faster",
+            description="REQUIRES DELTADESIGNS' UNOFFICIAL VERISON OF CHARM!\n\nExport Individual Static and Entites settings in Charm must be True.\n\nExperimental, Not guaranteed to be faster",
             default=False,
             )
 
@@ -95,9 +95,9 @@ class ImportD2Map(Operator, ImportHelper):
             box.label(text="Update available: " + latest_version)
             box.operator("wm.url_open", text="Get Latest Release").url = "https://github.com/DeltaDesigns/d2-map-importer-addon/releases/latest"
 
-        box = layout.box()
-        box.label(text="Unofficial Charm")
-        box.operator("wm.url_open", text="Get the Unofficial Charm build here").url = "https://github.com/DeltaDesigns/Charm/releases"
+        # box = layout.box()
+        # box.label(text="Unofficial Charm")
+        # box.operator("wm.url_open", text="Get the Unofficial Charm build here").url = "https://github.com/DeltaDesigns/Charm/releases"
 
     def execute(self, context):        # execute() is called when running the operator.
 
@@ -308,8 +308,12 @@ def assign_materials(self):
     #Get all the images in the directory and load them
     #Should probably change this to only load the textures included in the cfg, as to not load unneeded textures
     for img in os.listdir(self.Filepath + "/Textures/"):
-        if img.endswith(".png"):
+        if img.endswith(".png") or img.endswith(".tga"):
             bpy.data.images.load(self.Filepath + "/Textures/" + f"/{img}", check_existing = True)
+            if img.endswith(".png"):
+            	image_extension = ".png"
+            if img.endswith(".tga"):
+            	image_extension = ".tga"
             print(f"Loaded {img}")
     
     #New way of getting info from cfg, thank you Mont
@@ -324,9 +328,8 @@ def assign_materials(self):
         if not len(find_nodes_by_type(bpy.data.materials[k], 'TEX_IMAGE')) > 0: #
             tex_num = 0 #To keep track of the current position in the list
             for n, info in mat.items():
-                #current_image = "PS_" + str(n) + "_" + info["Hash"] + ".png"
-                current_image = info["Hash"] + ".png"
-                
+                current_image = info["Hash"] + image_extension
+
                 if info["SRGB"]:
                     colorspace = "sRGB"
                 else: 
