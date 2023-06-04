@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 3, 6),
+    "version": (0, 3, 7),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -311,9 +311,9 @@ def assign_materials(self):
         if img.endswith(".png") or img.endswith(".tga"):
             bpy.data.images.load(self.Filepath + "/Textures/" + f"/{img}", check_existing = True)
             if img.endswith(".png"):
-            	image_extension = ".png"
+                image_extension = ".png"
             if img.endswith(".tga"):
-            	image_extension = ".tga"
+                image_extension = ".tga"
             print(f"Loaded {img}")
     
     #New way of getting info from cfg, thank you Mont
@@ -457,6 +457,8 @@ def Is_Map(self):
     if "Terrain" in self.type:
         return True
     if "Dynamics" in self.type:
+        return True
+    if "ActivityEntities" in self.type:
         return True
     else:
         return False
