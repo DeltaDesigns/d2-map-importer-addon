@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 3, 7),
+    "version": (0, 3, 8),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -181,7 +181,7 @@ def assemble_map(self, file, Filepath):
                 for obj in tmp:
                     bpy.ops.object.select_all(action='DESELECT')
                     for meshes, mats in self.config["Parts"].items():
-                        if meshes[:8] == obj and meshes in bpy.context.view_layer.objects:
+                        if meshes[:8] == obj and meshes in newobjects:
                             print(meshes + " belongs to " + obj)
                             bpy.data.objects[meshes].select_set(True)
                             bpy.context.view_layer.objects.active = bpy.data.objects[meshes]
