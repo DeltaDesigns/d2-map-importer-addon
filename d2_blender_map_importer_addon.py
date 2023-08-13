@@ -15,6 +15,7 @@ from bpy.props import *
 import json
 import mathutils
 import os
+import math
 
 # ImportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
@@ -74,11 +75,11 @@ class ImportD2Map(Operator, ImportHelper):
             default=True,
             )
     
-    import_individual_fbx: BoolProperty(
-            name="Import Individual FBX (Read tooltip!)",
-            description="REQUIRES DELTADESIGNS' UNOFFICIAL VERISON OF CHARM!\n\nExport Individual Static and Entites settings in Charm must be True.\n\nExperimental, Not guaranteed to be faster",
-            default=False,
-            )
+    # import_individual_fbx: BoolProperty(
+    #         name="Import Individual FBX (Read tooltip!)",
+    #         description="REQUIRES DELTADESIGNS' UNOFFICIAL VERISON OF CHARM!\n\nExport Individual Static and Entites settings in Charm must be True.\n\nExperimental, Not guaranteed to be faster",
+    #         default=False,
+    #         )
 
     def draw(self, context):
         layout = self.layout
@@ -88,7 +89,7 @@ class ImportD2Map(Operator, ImportHelper):
         box.label(text="Options:")
         box.prop(self, 'combine_statics')
         box.prop(self, 'use_import_materials')
-        box.prop(self, 'import_individual_fbx')
+        #box.prop(self, 'import_individual_fbx')
 
         if update_available:
             box = layout.box()
@@ -133,32 +134,80 @@ def assemble_map(self, file, Filepath):
         self.type = self.config["Type"]
 
     #Skip if theres nothing to import
-    if self.config["Instances"].items().__len__() == 0 and "Map" in self.type:
+    if self.config["Instances"].items().__len__() == 0 and ("Map" or "Terrain") in self.type:  
         print(f"No instances found in {Name}, skipping...")
         return
  
     print(f"Starting import on {self.type}: {Name}")
+   
+    # for name, data in self.config["Decals"].items():
+    #     for corner in data: 
+    #         createprojectionbox(name, (mathutils.Vector((corner["Corner1"][0],corner["Corner1"][1],corner["Corner1"][2]))), mathutils.Vector((corner["Corner2"][0],corner["Corner2"][1],corner["Corner2"][2])))
+    
+    #Import Lights, testing
+    if "Lights" in self.config:
+        for name, lights in self.config["Lights"].items():
+            for data in lights: 
+                # Create a new point light
+                light_data = bpy.data.lights.new(name=data["Type"] + f"_{name}", type=data["Type"].upper())
+                light_object = bpy.data.objects.new(name=data["Type"] + f"_{name}", object_data=light_data)
+                bpy.context.collection.objects.link(light_object)
+
+                # Check if the selected object is an Area light
+                if light_object.data.type == 'AREA':
+                    # Change the shape and size of the light
+                    light_object.data.shape = 'RECTANGLE'  # Set the shape to rectangle
+
+                    # Set the size of the light
+                    light_object.data.size = data["Size"][0]/2  # Set the width to 2.0 units
+                    light_object.data.size_y = data["Size"][1]/2 # Set the height to 1.0 unit
+
+                # Set the light's color
+                color = data["Color"]
+                light_object.data.color = color  # RGB values ranging from 0.0 to 1.0
+                light_object.data.energy = 100
+
+                # Set the light to be visible in the viewport and in renders
+                light_object.hide_viewport = False
+                light_object.hide_render = False
+
+                location = [data["Translation"][0], data["Translation"][1], data["Translation"][2]]
+                # Reminder that Blender uses WXYZ, the order in the config file is XYZW, so W is always first
+                quat = mathutils.Quaternion([data["Rotation"][3], data["Rotation"][0], data["Rotation"][1], data["Rotation"][2]])
+
+                light_object.location = location
+                light_object.rotation_mode = 'QUATERNION'
+                light_object.rotation_quaternion = quat
+
+                # Switch rotation mode to XYZ
+                light_object.rotation_mode = 'XYZ'
+                light_object.rotation_euler = light_object.rotation_euler
+
+                # Add 90 degrees rotation on the X-axis
+                light_object.rotation_euler[0] += math.radians(90.0) #Quat rotation is wrong so have to do this, some are still wrong though
+        
+    #return
 
     #make a collection with the name of the imported fbx for the objects
     bpy.data.collections.new(str(Name))
     bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
 
-    if self.import_individual_fbx:
-        for static, instances in self.config["Instances"].items():
-            fbx_path = os.path.join(Filepath, Filepath + f"\\{'Dynamics' if 'Dynamics' in self.type else 'Statics'}\\", f"{static+'_Terrain' if 'Terrain' in self.type else static}.fbx")
+    # if self.import_individual_fbx:
+    #     for static, instances in self.config["Instances"].items():
+    #         fbx_path = os.path.join(Filepath, Filepath + f"\\{'Dynamics' if 'Dynamics' in self.type else 'Statics'}\\", f"{static+'_Terrain' if 'Terrain' in self.type else static}.fbx")
             
-            bpy.ops.import_scene.fbx(filepath=fbx_path, use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
-            print(f"Imported FBX: {static}")
-            # Select all the meshes that were imported
-            meshes = [obj for obj in bpy.context.selected_objects if obj.type == 'MESH']
+    #         bpy.ops.import_scene.fbx(filepath=fbx_path, use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
+    #         print(f"Imported FBX: {static}")
+    #         # Select all the meshes that were imported
+    #         meshes = [obj for obj in bpy.context.selected_objects if obj.type == 'MESH']
 
-            # Join the meshes into one if there's more than one
-            if len(meshes) > 1:
-                bpy.context.view_layer.objects.active = meshes[0]
-                bpy.ops.object.join()
-    else:
-        bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
+    #         # Join the meshes into one if there's more than one
+    #         if len(meshes) > 1:
+    #             bpy.context.view_layer.objects.active = meshes[0]
+    #             bpy.ops.object.join()
+    # else:
+    bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
     
     add_to_collection(self) 
 
@@ -168,7 +217,7 @@ def assemble_map(self, file, Filepath):
     
     #Merge statics, create instances for maps only
     if Is_Map(self):
-        if self.combine_statics and not self.import_individual_fbx:
+        if self.combine_statics and not "Dynamics" in self.type:
             print("Merging Map Statics... ")
             tmp = []
             for obj in newobjects:
@@ -319,43 +368,47 @@ def assign_materials(self):
     #New way of getting info from cfg, thank you Mont
     d = {x : y["PS"] for x, y in self.config["Materials"].items()}
     
+    
     for k, mat in d.items():
-        matnodes = bpy.data.materials[k].node_tree.nodes
-        if matnodes.find('Principled BSDF') != -1:
-            matnodes['Principled BSDF'].inputs['Metallic'].default_value = 0 
+        try:
+            matnodes = bpy.data.materials[k].node_tree.nodes
+            if matnodes.find('Principled BSDF') != -1:
+                matnodes['Principled BSDF'].inputs['Metallic'].default_value = 0 
 
-        #To make sure the current material already doesnt have at least one texture node
-        if not len(find_nodes_by_type(bpy.data.materials[k], 'TEX_IMAGE')) > 0: #
-            tex_num = 0 #To keep track of the current position in the list
-            for n, info in mat.items():
-                current_image = info["Hash"] + image_extension
+            #To make sure the current material already doesnt have at least one texture node
+            if not len(find_nodes_by_type(bpy.data.materials[k], 'TEX_IMAGE')) > 0: #
+                tex_num = 0 #To keep track of the current position in the list
+                for n, info in mat.items():
+                    current_image = info["Hash"] + image_extension
 
-                if info["SRGB"]:
-                    colorspace = "sRGB"
-                else: 
-                    colorspace = "Non-Color"
+                    if info["SRGB"]:
+                        colorspace = "sRGB"
+                    else: 
+                        colorspace = "Non-Color"
 
-                texnode = matnodes.new('ShaderNodeTexImage')
-                texnode.hide = True
-                texnode.location = (-370.0, 200.0 + (float(tex_num)*-1.1)*50) #shitty offsetting
+                    texnode = matnodes.new('ShaderNodeTexImage')
+                    texnode.hide = True
+                    texnode.location = (-370.0, 200.0 + (float(tex_num)*-1.1)*50) #shitty offsetting
 
-                texture = bpy.data.images.get(current_image)
-                if texture:
-                    texnode.label = texture.name
-                    texture.colorspace_settings.name = colorspace
-                    texture.alpha_mode = "CHANNEL_PACKED"
-                    texnode.image = texture      #Assign the texture to the node
+                    texture = bpy.data.images.get(current_image)
+                    if texture:
+                        texnode.label = texture.name
+                        texture.colorspace_settings.name = colorspace
+                        texture.alpha_mode = "CHANNEL_PACKED"
+                        texnode.image = texture      #Assign the texture to the node
 
-                    #assign a texture to material's diffuse and normal just to help a little 
-                    if texture.colorspace_settings.name == "sRGB":     
-                        link_diffuse(bpy.data.materials[k])
-                    if texture.colorspace_settings.name == "Non-Color":
-                        if int(tex_num) == 0:
+                        #assign a texture to material's diffuse and normal just to help a little 
+                        if texture.colorspace_settings.name == "sRGB":     
                             link_diffuse(bpy.data.materials[k])
-                        else:
-                            link_normal(bpy.data.materials[k], int(tex_num))
-                tex_num += 1
-                
+                        if texture.colorspace_settings.name == "Non-Color":
+                            if int(tex_num) == 0:
+                                link_diffuse(bpy.data.materials[k])
+                            else:
+                                link_normal(bpy.data.materials[k], int(tex_num))
+                    tex_num += 1
+        except KeyError:
+            print("Key not found: ", k)
+                    
 def find_nodes_by_type(material, node_type):
     """ Return a list of all of the nodes in the material
         that match the node type.
@@ -434,6 +487,55 @@ def cleanup(self):
         if block.users == 0:
             bpy.data.images.remove(block)
     print("Done cleaning up!")
+
+def createprojectionbox(name, corner1, corner2):
+    # Calculate the positions of the remaining vertices
+    vertex_positions = [
+        corner1,
+        mathutils.Vector((corner1.x, corner1.y, corner2.z)),
+        mathutils.Vector((corner1.x, corner2.y, corner1.z)),
+        mathutils.Vector((corner1.x, corner2.y, corner2.z)),
+        mathutils.Vector((corner2.x, corner1.y, corner1.z)),
+        mathutils.Vector((corner2.x, corner1.y, corner2.z)),
+        mathutils.Vector((corner2.x, corner2.y, corner1.z)),
+        corner2
+    ]
+
+    # Define the indices of the cube's faces using the vertex indices
+    face_indices = [
+        (0, 1, 3, 2),  # Face 0
+        (4, 5, 7, 6),  # Face 1
+        (0, 1, 5, 4),  # Face 2
+        (2, 3, 7, 6),  # Face 3
+        (0, 2, 6, 4),  # Face 4
+        (1, 3, 7, 5),  # Face 5
+    ]
+
+    mesh = bpy.data.meshes.new('Cube')
+    obj = bpy.data.objects.new('Cube', mesh)
+    obj.name = name
+    scene = bpy.context.scene
+    scene.collection.objects.link(obj)
+
+    mesh.from_pydata(vertex_positions, [], face_indices)
+    mesh.update()
+
+    # UV unwrapping
+    mesh.uv_layers.new()
+    uv_layer = mesh.uv_layers[0].data
+
+    # Calculate the UV scale
+    uv_scale = mathutils.Vector((corner2.x - corner1.x, corner2.y - corner1.y))
+
+    for face in mesh.polygons:
+        for loop_index in face.loop_indices:
+            loop_vertex_index = mesh.loops[loop_index].vertex_index
+            vertex_position = vertex_positions[loop_vertex_index]
+            uv = (
+                (vertex_position.x - corner1.x) / uv_scale.x,
+                (vertex_position.y - corner1.y) / uv_scale.y
+            )
+            uv_layer[loop_index].uv = uv
 
 def add_to_collection(self):
     # List of object references
