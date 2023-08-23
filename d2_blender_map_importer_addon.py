@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 3, 9),
+    "version": (0, 4, 0),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -96,28 +96,30 @@ class ImportD2Map(Operator, ImportHelper):
             box.label(text="Update available: " + latest_version)
             box.operator("wm.url_open", text="Get Latest Release").url = "https://github.com/DeltaDesigns/d2-map-importer-addon/releases/latest"
 
-        # box = layout.box()
-        # box.label(text="Unofficial Charm")
-        # box.operator("wm.url_open", text="Get the Unofficial Charm build here").url = "https://github.com/DeltaDesigns/Charm/releases"
-
-    def execute(self, context):        # execute() is called when running the operator.
-
-        #Deselect all objects just in case 
+    def execute(self, context):
+        # Deselect all objects just in case
         bpy.ops.object.select_all(action='DESELECT')
 
         if self.files:
             ShowMessageBox(f"Importing...", "This might take some time! (Especially on multiple imports)", 'ERROR')
-            #Filepath = os.path.abspath(bpy.context.space_data.text.filepath+"/..")
+            
             dirname = os.path.dirname(self.filepath)
-            for file in self.files:
-                self.Filepath = dirname #os.path.join(dirname, file.name)
-                
+            
+            # Create a list of (file, size) tuples and sort by size
+            file_sizes = [(file, os.path.getsize(os.path.join(dirname, file.name))) for file in self.files]
+            sorted_files = sorted(file_sizes, key=lambda x: x[1], reverse=True)
+
+            for file, size in sorted_files:
+                self.Filepath = dirname
+                            
                 print(f"File: {file.name}")
                 print(f"Name: {file.name[:-9]}")
-                print(f"Path: {dirname}")
+                print(f"Path: {self.Filepath}")  # Use self.Filepath here
+                print(f"Size: {size} bytes")
 
-                #To give the message box a chance to show up
+                # To give the message box a chance to show up
                 assemble_map(self, file, self.Filepath)
+
 
         return {'FINISHED'}            # Lets Blender know the operator finished successfully.
 
@@ -217,25 +219,46 @@ def assemble_map(self, file, Filepath):
     
     #Merge statics, create instances for maps only
     if Is_Map(self):
-        if self.combine_statics and not "Dynamics" in self.type:
-            print("Merging Map Statics... ")
-            tmp = []
-            for obj in newobjects:
-                #deselect all objects
-                bpy.ops.object.select_all(action='DESELECT')
-                tmp.append(obj.name[:8])
+        if self.combine_statics: #and not "Dynamics" in self.type:
+            # Get selected objects after import
+            selected_objects = bpy.context.selected_objects
+            # Dictionary to store imported objects
+            imported_objects = {}
+            # Get selected objects after import
+            selected_objects = bpy.context.selected_objects
 
-            #merge static parts into one object
-            if len(self.config["Parts"].items()) != 1:
-                for obj in tmp:
-                    bpy.ops.object.select_all(action='DESELECT')
-                    for meshes, mats in self.config["Parts"].items():
-                        if meshes[:8] == obj and meshes in newobjects:
-                            print(meshes + " belongs to " + obj)
-                            bpy.data.objects[meshes].select_set(True)
-                            bpy.context.view_layer.objects.active = bpy.data.objects[meshes]
-                    bpy.ops.object.join()
-                bpy.ops.outliner.orphans_purge()
+            # Add selected objects to the dictionary
+            imported_objects[Name] = selected_objects
+
+            # Combine objects with the same prefix and join their meshes
+            for Name, objects in imported_objects.items():
+                combined_objects = {}  # To store combined meshes
+
+                for obj in objects:
+                    if obj.type == 'MESH':
+                        prefix = obj.name[:8]  # Get the first 8 characters of the object name
+
+                        if prefix not in combined_objects:
+                            combined_objects[prefix] = []
+
+                        combined_objects[prefix].append(obj)
+
+                # Join meshes with the same prefix
+                for prefix, obj_list in combined_objects.items():
+                    if len(obj_list) > 1:
+                        print(f"Combining meshes for '{prefix}':")
+                        bpy.context.view_layer.objects.active = obj_list[0]  # Set the active object for joining
+                        bpy.ops.object.select_all(action='DESELECT')
+
+                        for obj in obj_list:
+                            print(f"  {obj.name}")
+                            obj.select_set(True)
+
+                        bpy.ops.object.join()
+
+            # Clear selection
+            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.outliner.orphans_purge()
 
         newobjects = [] #Clears the list just in case
         newobjects = bpy.data.collections[str(Name)].objects #Readds the objects in the collection to the list
@@ -249,6 +272,7 @@ def assemble_map(self, file, Filepath):
             if obj_name not in self.static_names.keys():
                 self.static_names[obj_name] = []
             self.static_names[obj_name].append(x.name)
+            #print(f"Added {x.name} to static_names")
 
         print("Instancing...")
 
@@ -261,40 +285,34 @@ def assemble_map(self, file, Filepath):
 
             for part in parts:
                 for instance in instances:
-                    if bpy.data.objects[part].parent: #For dynamics with skeletons, need to copy the skeleton and meshes THEN reparent the copied meshes to the copied skeleton and change its armature modifier...
-                        if bpy.data.objects[part].parent.type == 'ARMATURE':
-                            ob_copy = bpy.data.objects[part].parent.copy()
-                            bpy.context.scene.collection.objects.link(ob_copy)
-                            print(f"Object '{bpy.data.objects[part].name}' is parented to an armature '{ob_copy.name}'")
+                    original_armature = bpy.data.objects[part].find_armature()
+                    if original_armature: #For dynamics with skeletons, need to copy the skeleton and meshes THEN reparent the copied meshes to the copied skeleton and change its armature modifier...
+                        ob_copy = original_armature.copy()
+                        print(f"Object '{bpy.data.objects[part].name}' is parented to an armature '{ob_copy.name}'")
+                        
+                        # Loop through the children of the parent object
+                        for child in bpy.data.objects[part].parent.children:
+                            # Create a copy of the child object
+                            new_child = child.copy()
+                            # Add the copy to the scene
+                            bpy.context.scene.collection.objects.link(new_child)
+                            # Parent the new child to the new parent
+                            new_child.parent = ob_copy
+                            # Loop through the child's modifiers
+                            for modifier in new_child.modifiers:
+                                # Check if the modifier is an armature modifier
+                                if modifier.type == 'ARMATURE':
+                                    # Set the armature object in the modifier to the new armature
+                                    modifier.object = ob_copy
 
-                            # Loop through the collections that the armature is linked to (idk why it does this)
-                            for collection in ob_copy.users_collection:
+                            for collection in new_child.users_collection: #...
                                 # Unlink the armature from the collection
-                                collection.objects.unlink(ob_copy)
-
-                            # Loop through the children of the parent object
-                            for child in bpy.data.objects[part].parent.children:
-                                # Create a copy of the child object
-                                new_child = child.copy()
-                                # Add the copy to the scene
-                                bpy.context.scene.collection.objects.link(new_child)
-                                # Parent the new child to the new parent
-                                new_child.parent = ob_copy
-                                # Loop through the child's modifiers
-                                for modifier in new_child.modifiers:
-                                    # Check if the modifier is an armature modifier
-                                    if modifier.type == 'ARMATURE':
-                                        # Set the armature object in the modifier to the new armature
-                                        modifier.object = ob_copy
-
-                                for collection in new_child.users_collection: #...
-                                    # Unlink the armature from the collection
-                                    collection.objects.unlink(new_child)
-                                    
-                                bpy.context.view_layer.active_layer_collection.collection.objects.link(new_child) #add the child to the collection (again, idk why this is needed)
-                            # Move the new armature to the new collection
-                            bpy.context.view_layer.active_layer_collection.collection.objects.link(ob_copy)
-                    else:  
+                                collection.objects.unlink(new_child)
+                                
+                            bpy.context.view_layer.active_layer_collection.collection.objects.link(new_child) #add the child to the collection (again, idk why this is needed)
+                        # Move the new armature to the new collection
+                        bpy.context.view_layer.active_layer_collection.collection.objects.link(ob_copy)
+                    else:
                         ob_copy = bpy.data.objects[part].copy()
                         bpy.context.collection.objects.link(ob_copy) #makes the instances
 
@@ -313,7 +331,6 @@ def assemble_map(self, file, Filepath):
                 bpy.ops.object.rotation_clear(clear_delta=False) #Clears the rotation of the terrain
 
     if not Is_Map(self):
-
         for x in newobjects:
             print(x)
             if len(self.config["Parts"].items()) <= 1: #Fix for error that occurs when theres only 1 object in the fbx
@@ -368,7 +385,6 @@ def assign_materials(self):
     #New way of getting info from cfg, thank you Mont
     d = {x : y["PS"] for x, y in self.config["Materials"].items()}
     
-    
     for k, mat in d.items():
         try:
             matnodes = bpy.data.materials[k].node_tree.nodes
@@ -407,7 +423,7 @@ def assign_materials(self):
                                 link_normal(bpy.data.materials[k], int(tex_num))
                     tex_num += 1
         except KeyError:
-            print("Key not found: ", k)
+            print("Material not found: ", k)
                     
 def find_nodes_by_type(material, node_type):
     """ Return a list of all of the nodes in the material
@@ -467,8 +483,9 @@ def cleanup(self):
     print(f"Cleaning up...")
     #Delete all the objects in static_names
     if Is_Map(self):
-        for name in self.static_names.values():
-            bpy.data.objects.remove(bpy.data.objects[name[0]])
+        for objs in self.static_names.values():
+            for name in objs:
+                bpy.data.objects.remove(bpy.data.objects[name])
         
     #Removes unused data such as duplicate images, materials, etc.
     for block in bpy.data.meshes:
