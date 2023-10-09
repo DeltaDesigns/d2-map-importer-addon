@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 4, 0),
+    "version": (0, 4, 1),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -75,6 +75,12 @@ class ImportD2Map(Operator, ImportHelper):
             default=True,
             )
     
+    import_lights: BoolProperty(
+            name="Import Lights",
+            description="Imports basic Point Lights\nSome light colors can/will be wrong\nIntensity is the same for all",
+            default=True,
+            )
+    
     # import_individual_fbx: BoolProperty(
     #         name="Import Individual FBX (Read tooltip!)",
     #         description="REQUIRES DELTADESIGNS' UNOFFICIAL VERISON OF CHARM!\n\nExport Individual Static and Entites settings in Charm must be True.\n\nExperimental, Not guaranteed to be faster",
@@ -89,6 +95,7 @@ class ImportD2Map(Operator, ImportHelper):
         box.label(text="Options:")
         box.prop(self, 'combine_statics')
         box.prop(self, 'use_import_materials')
+        box.prop(self, 'import_lights')
         #box.prop(self, 'import_individual_fbx')
 
         if update_available:
@@ -147,68 +154,46 @@ def assemble_map(self, file, Filepath):
     #         createprojectionbox(name, (mathutils.Vector((corner["Corner1"][0],corner["Corner1"][1],corner["Corner1"][2]))), mathutils.Vector((corner["Corner2"][0],corner["Corner2"][1],corner["Corner2"][2])))
     
     #Import Lights, testing
-    if "Lights" in self.config:
-        for name, lights in self.config["Lights"].items():
-            for data in lights: 
-                # Create a new point light
-                light_data = bpy.data.lights.new(name=data["Type"] + f"_{name}", type=data["Type"].upper())
-                light_object = bpy.data.objects.new(name=data["Type"] + f"_{name}", object_data=light_data)
-                bpy.context.collection.objects.link(light_object)
+    if self.import_lights:
+        if "Lights" in self.config:
+            for name, lights in self.config["Lights"].items():
+                for data in lights: 
+                    # Create a new point light
+                    light_data = bpy.data.lights.new(name=data["Type"] + f"_{name}", type=data["Type"].upper())
+                    light_object = bpy.data.objects.new(name=data["Type"] + f"_{name}", object_data=light_data)
+                    bpy.context.collection.objects.link(light_object)
 
-                # Check if the selected object is an Area light
-                if light_object.data.type == 'AREA':
-                    # Change the shape and size of the light
-                    light_object.data.shape = 'RECTANGLE'  # Set the shape to rectangle
+                    # Check if the selected object is an Area light
+                    if light_object.data.type == 'AREA':
+                        # Change the shape and size of the light
+                        light_object.data.shape = 'RECTANGLE'  # Set the shape to rectangle
 
-                    # Set the size of the light
-                    light_object.data.size = data["Size"][0]/2  # Set the width to 2.0 units
-                    light_object.data.size_y = data["Size"][1]/2 # Set the height to 1.0 unit
+                        # Set the size of the light
+                        light_object.data.size = data["Size"][0]/2  # Set the width to 2.0 units
+                        light_object.data.size_y = data["Size"][1]/2 # Set the height to 1.0 unit
 
-                # Set the light's color
-                color = data["Color"]
-                light_object.data.color = color  # RGB values ranging from 0.0 to 1.0
-                light_object.data.energy = 100
+                    # Set the light's color
+                    color = data["Color"]
+                    light_object.data.color = color  # RGB values ranging from 0.0 to 1.0
+                    light_object.data.energy = 200
 
-                # Set the light to be visible in the viewport and in renders
-                light_object.hide_viewport = False
-                light_object.hide_render = False
+                    # Set the light to be visible in the viewport and in renders
+                    light_object.hide_viewport = False
+                    light_object.hide_render = False
 
-                location = [data["Translation"][0], data["Translation"][1], data["Translation"][2]]
-                # Reminder that Blender uses WXYZ, the order in the config file is XYZW, so W is always first
-                quat = mathutils.Quaternion([data["Rotation"][3], data["Rotation"][0], data["Rotation"][1], data["Rotation"][2]])
+                    location = [data["Translation"][0], data["Translation"][1], data["Translation"][2]]
+                    # Reminder that Blender uses WXYZ, the order in the config file is XYZW, so W is always first
+                    quat = mathutils.Quaternion([data["Rotation"][3], data["Rotation"][0], data["Rotation"][1], data["Rotation"][2]])
 
-                light_object.location = location
-                light_object.rotation_mode = 'QUATERNION'
-                light_object.rotation_quaternion = quat
-
-                # Switch rotation mode to XYZ
-                light_object.rotation_mode = 'XYZ'
-                light_object.rotation_euler = light_object.rotation_euler
-
-                # Add 90 degrees rotation on the X-axis
-                light_object.rotation_euler[0] += math.radians(90.0) #Quat rotation is wrong so have to do this, some are still wrong though
-        
-    #return
+                    light_object.location = location
+                    light_object.rotation_mode = 'QUATERNION'
+                    light_object.rotation_quaternion = quat
 
     #make a collection with the name of the imported fbx for the objects
     bpy.data.collections.new(str(Name))
     bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
 
-    # if self.import_individual_fbx:
-    #     for static, instances in self.config["Instances"].items():
-    #         fbx_path = os.path.join(Filepath, Filepath + f"\\{'Dynamics' if 'Dynamics' in self.type else 'Statics'}\\", f"{static+'_Terrain' if 'Terrain' in self.type else static}.fbx")
-            
-    #         bpy.ops.import_scene.fbx(filepath=fbx_path, use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
-    #         print(f"Imported FBX: {static}")
-    #         # Select all the meshes that were imported
-    #         meshes = [obj for obj in bpy.context.selected_objects if obj.type == 'MESH']
-
-    #         # Join the meshes into one if there's more than one
-    #         if len(meshes) > 1:
-    #             bpy.context.view_layer.objects.active = meshes[0]
-    #             bpy.ops.object.join()
-    # else:
     bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
     
     add_to_collection(self) 
@@ -317,13 +302,14 @@ def assemble_map(self, file, Filepath):
                         bpy.context.collection.objects.link(ob_copy) #makes the instances
 
                     location = [instance["Translation"][0], instance["Translation"][1], instance["Translation"][2]]
+                    scale = [instance["Scale"][0], instance["Scale"][1], instance["Scale"][2]]
                     #Reminder that blender uses WXYZ, the order in the confing file is XYZW, so W is always first
                     quat = mathutils.Quaternion([instance["Rotation"][3], instance["Rotation"][0], instance["Rotation"][1], instance["Rotation"][2]])
 
                     ob_copy.location = location
                     ob_copy.rotation_mode = 'QUATERNION'
                     ob_copy.rotation_quaternion = quat
-                    ob_copy.scale = [instance["Scale"]]*3
+                    ob_copy.scale = scale
     
         if "Terrain" in self.type:
             for x in newobjects:
