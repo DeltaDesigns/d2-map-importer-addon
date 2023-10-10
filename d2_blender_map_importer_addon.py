@@ -194,7 +194,12 @@ def assemble_map(self, file, Filepath):
     bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
 
-    bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True) #Just imports the fbx, no special settings needed
+    # Check if the file exists
+    if os.path.isfile(Filepath+ "\\" + Name + ".fbx"):
+        bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True)
+    else:
+        print(f"Could not find FBX: {Name}")
+        return
     
     add_to_collection(self) 
 
