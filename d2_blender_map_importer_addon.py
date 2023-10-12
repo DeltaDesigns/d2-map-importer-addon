@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 4, 3),
+    "version": (0, 4, 4),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -20,7 +20,7 @@ import math
 # ImportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
 from bpy_extras.io_utils import ImportHelper
-from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty
+from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty, FloatProperty
 from bpy.types import Operator
 
 icons_dir = os.path.join(os.path.dirname(__file__), "icons")
@@ -81,6 +81,20 @@ class ImportD2Map(Operator, ImportHelper):
             default=True,
             )
     
+    light_intensity_override: FloatProperty(
+        name="Light Intensity",
+        description="Imported light intensity",
+        default=200.0,  # Default value
+        min=0.0,      # Minimum value
+        soft_max=10000.0,  # Maximum value
+    )
+
+    override_light_color: BoolProperty(
+            name="Override empty light color",
+            description="Makes all lights with no color to full white",
+            default=False,
+            )
+    
     # import_individual_fbx: BoolProperty(
     #         name="Import Individual FBX (Read tooltip!)",
     #         description="REQUIRES DELTADESIGNS' UNOFFICIAL VERISON OF CHARM!\n\nExport Individual Static and Entites settings in Charm must be True.\n\nExperimental, Not guaranteed to be faster",
@@ -96,7 +110,8 @@ class ImportD2Map(Operator, ImportHelper):
         box.prop(self, 'combine_statics')
         box.prop(self, 'use_import_materials')
         box.prop(self, 'import_lights')
-        #box.prop(self, 'import_individual_fbx')
+        box.prop(self, 'light_intensity_override')
+        box.prop(self, 'override_light_color')
 
         if update_available:
             box = layout.box()
@@ -143,16 +158,19 @@ def assemble_map(self, file, Filepath):
         self.type = self.config["Type"]
 
     #Skip if theres nothing to import
-    if self.config["Instances"].items().__len__() == 0 and ("Map" or "Terrain") in self.type:  
-        print(f"No instances found in {Name}, skipping...")
-        return
+    # if self.config["Instances"].items().__len__() == 0 and ("Map" or "Terrain") in self.type:  
+    #     print(f"No instances found in {Name}, skipping...")
+    #     return
  
     print(f"Starting import on {self.type}: {Name}")
    
     # for name, data in self.config["Decals"].items():
     #     for corner in data: 
-    #         createprojectionbox(name, (mathutils.Vector((corner["Corner1"][0],corner["Corner1"][1],corner["Corner1"][2]))), mathutils.Vector((corner["Corner2"][0],corner["Corner2"][1],corner["Corner2"][2])))
+    #         createprojectionbox(name, (mathutils.Vector((corner["Corner1"][0],corner["Corner1"][1],corner["Corner1"][2]))), mathutils.Vector((corner["Corner2"][0],corner["Corner2"][1],corner["Corner2"][2])), corner["Material"])
     
+    # assign_materials(self)
+    # return
+
     #Import Lights, testing
     if self.import_lights:
         if "Lights" in self.config:
@@ -175,8 +193,10 @@ def assemble_map(self, file, Filepath):
 
                         # Set the light's color
                         color = data["Color"]
+                        if data["Color"] == [0,0,0] and self.override_light_color:
+                            color = [1,1,1]
                         light_object.data.color = color  # RGB values ranging from 0.0 to 1.0
-                        light_object.data.energy = 200
+                        light_object.data.energy = self.light_intensity_override
 
                         # Set the light to be visible in the viewport and in renders
                         light_object.hide_viewport = False
@@ -227,9 +247,6 @@ def assemble_map(self, file, Filepath):
             selected_objects = bpy.context.selected_objects
             # Dictionary to store imported objects
             imported_objects = {}
-            # Get selected objects after import
-            selected_objects = bpy.context.selected_objects
-
             # Add selected objects to the dictionary
             imported_objects[Name] = selected_objects
 
@@ -267,21 +284,22 @@ def assemble_map(self, file, Filepath):
         newobjects = bpy.data.collections[str(Name)].objects #Readds the objects in the collection to the list
 
         for x in newobjects:
-            if len(self.config["Instances"].items()) <= 1 and len(self.config["Parts"].items()) <= 1: #Fix for error that occurs when theres only 1 object in the fbx
-                for newname, value in self.config["Instances"].items():
-                    x.name = newname
+            if x.type != 'EMPTY':
+                if len(self.config["Parts"].items()) <= 1: #Fix for error that occurs when theres only 1 object in the fbx
+                    for newname, value in self.config["Parts"].items():
+                        x.name = newname[:8]
 
-            obj_name = x.name[:8]
-            if obj_name not in self.static_names.keys():
-                self.static_names[obj_name] = []
-            self.static_names[obj_name].append(x.name)
-            #print(f"Added {x.name} to static_names")
+                obj_name = x.name[:8]
+                if obj_name not in self.static_names.keys():
+                    self.static_names[obj_name] = []
+                self.static_names[obj_name].append(x.name)
+                #print(f"Added {x.name} to static_names")
 
         print("Instancing...")
 
         for static, instances in self.config["Instances"].items():
             try:  # fix this
-                parts = self.static_names[static]
+                parts = self.static_names[static[:8]]
             except:
                 print(f"Failed on {static}. FBX may contain only 1 object")
                 continue
@@ -367,7 +385,7 @@ def assign_materials(self):
             else:
                 if len(self.config["Parts"].items()) <= 1:
                     for name, mat in self.config["Parts"].items():
-                        bpy.data.objects[name].active_material.name = mat
+                        bpy.data.objects[name[:8]].active_material.name = mat
 
     for obj in bpy.data.objects: #remove any duplicate materials that may have been created
         for slt in obj.material_slots:
@@ -420,11 +438,11 @@ def assign_materials(self):
                         #assign a texture to material's diffuse and normal just to help a little 
                         if texture.colorspace_settings.name == "sRGB":     
                             link_diffuse(bpy.data.materials[k])
-                        if texture.colorspace_settings.name == "Non-Color":
-                            if int(tex_num) == 0:
-                                link_diffuse(bpy.data.materials[k])
-                            else:
-                                link_normal(bpy.data.materials[k], int(tex_num))
+                        # if texture.colorspace_settings.name == "Non-Color":
+                        #     if int(tex_num) == 0:
+                        #         link_diffuse(bpy.data.materials[k])
+                        #     else:
+                        #         link_normal(bpy.data.materials[k], int(tex_num))
                     tex_num += 1
         except KeyError:
             print("Material not found: ", k)
@@ -509,7 +527,18 @@ def cleanup(self):
             bpy.data.images.remove(block)
     print("Done cleaning up!")
 
-def createprojectionbox(name, corner1, corner2):
+def createprojectionbox(name, corner1, corner2, material):
+
+    # Perform the raycast
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    hit, loc, norm, idx, obj, mw = bpy.context.scene.ray_cast(
+        depsgraph,
+        origin=corner1,  # Starting point of the ray
+        direction=(corner2 - corner1).normalized(),  # Direction of the ray
+    )
+
+    print("cast_result:", obj)
+
     # Calculate the positions of the remaining vertices
     vertex_positions = [
         corner1,
@@ -534,6 +563,11 @@ def createprojectionbox(name, corner1, corner2):
 
     mesh = bpy.data.meshes.new('Cube')
     obj = bpy.data.objects.new('Cube', mesh)
+    
+    mat = bpy.data.materials.new(name=material) #set new material to variable
+    mat.use_nodes = True
+    obj.data.materials.append(mat) #add the material to the object
+
     obj.name = name
     scene = bpy.context.scene
     scene.collection.objects.link(obj)
@@ -557,6 +591,7 @@ def createprojectionbox(name, corner1, corner2):
                 (vertex_position.y - corner1.y) / uv_scale.y
             )
             uv_layer[loop_index].uv = uv
+
 
 def add_to_collection(self):
     # List of object references
