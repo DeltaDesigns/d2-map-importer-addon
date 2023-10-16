@@ -171,6 +171,11 @@ def assemble_map(self, file, Filepath):
     # assign_materials(self)
     # return
 
+    #make a collection with the name of the imported fbx for the objects
+    bpy.data.collections.new(str(Name))
+    bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
+    bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
+
     #Import Lights, testing
     if self.import_lights:
         if "Lights" in self.config:
@@ -221,12 +226,6 @@ def assemble_map(self, file, Filepath):
                         light_object.rotation_mode = 'QUATERNION'
                         light_object.rotation_quaternion = quat
                     
-
-    #make a collection with the name of the imported fbx for the objects
-    bpy.data.collections.new(str(Name))
-    bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
-    bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
-
     # Check if the file exists
     if os.path.isfile(Filepath+ "\\" + Name + ".fbx"):
         bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True)
@@ -435,9 +434,11 @@ def assign_materials(self):
                         texture.alpha_mode = "CHANNEL_PACKED"
                         texnode.image = texture      #Assign the texture to the node
 
-                        #assign a texture to material's diffuse and normal just to help a little 
-                        if texture.colorspace_settings.name == "sRGB":     
-                            link_diffuse(bpy.data.materials[k])
+                        #assign the first texture to material's diffuse just to help a little, good luck o7
+                        link_diffuse(bpy.data.materials[k])
+
+                        # if texture.colorspace_settings.name == "sRGB":     
+                        #     link_diffuse(bpy.data.materials[k])
                         # if texture.colorspace_settings.name == "Non-Color":
                         #     if int(tex_num) == 0:
                         #         link_diffuse(bpy.data.materials[k])
