@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 4, 4),
+    "version": (0, 4, 5),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -337,7 +337,10 @@ def assemble_map(self, file, Filepath):
                         bpy.context.collection.objects.link(ob_copy) #makes the instances
 
                     location = [instance["Translation"][0], instance["Translation"][1], instance["Translation"][2]]
-                    scale = [instance["Scale"][0], instance["Scale"][1], instance["Scale"][2]]
+                    if type(instance["Scale"]) == float: #Compatibility for older charm verisons
+                        scale = [instance["Scale"]]*3
+                    else:
+                        scale = [instance["Scale"][0], instance["Scale"][1], instance["Scale"][2]]
                     #Reminder that blender uses WXYZ, the order in the confing file is XYZW, so W is always first
                     quat = mathutils.Quaternion([instance["Rotation"][3], instance["Rotation"][0], instance["Rotation"][1], instance["Rotation"][2]])
 
