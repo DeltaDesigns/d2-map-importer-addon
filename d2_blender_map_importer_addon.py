@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 4, 5),
+    "version": (0, 5, 0),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -30,6 +30,7 @@ custom_icon_col = {}
 update_available = False
 patch_notes = ""
 latest_version = ""
+image_extension = ".png"
 
 class ImportD2Map(Operator, ImportHelper):
     bl_idname = "d2map.import"        # Unique identifier for buttons and menu items to reference.
@@ -95,6 +96,12 @@ class ImportD2Map(Operator, ImportHelper):
             default=False,
             )
     
+    use_terrain_dyemap_output: BoolProperty(
+            name="Show Terrain Dyemaps",
+            description="Use terrain dyemaps as the main shader output",
+            default=False,
+            )
+    
     # import_individual_fbx: BoolProperty(
     #         name="Import Individual FBX (Read tooltip!)",
     #         description="REQUIRES DELTADESIGNS' UNOFFICIAL VERISON OF CHARM!\n\nExport Individual Static and Entites settings in Charm must be True.\n\nExperimental, Not guaranteed to be faster",
@@ -113,6 +120,10 @@ class ImportD2Map(Operator, ImportHelper):
         box.prop(self, 'light_intensity_override')
         box.prop(self, 'override_light_color')
 
+        box2 = layout.box()
+        box2.label(text="Misc:")
+        box2.prop(self, 'use_terrain_dyemap_output')
+        
         if update_available:
             box = layout.box()
             box.label(text="Update available: " + latest_version)
@@ -349,11 +360,6 @@ def assemble_map(self, file, Filepath):
                     ob_copy.rotation_quaternion = quat
                     ob_copy.scale = scale
     
-        if "Terrain" in self.type:
-            for x in newobjects:
-                x.select_set(True)
-                bpy.ops.object.rotation_clear(clear_delta=False) #Clears the rotation of the terrain
-
     if not Is_Map(self):
         for x in newobjects:
             print(x)
@@ -369,6 +375,13 @@ def assemble_map(self, file, Filepath):
 
     if self.use_import_materials:
         assign_materials(self)
+
+    if "Terrain" in self.type:
+        if "TerrainDyemaps" in self.config:
+            add_terrain_dyemaps(self, newobjects)
+        for x in newobjects:
+            x.select_set(True)
+            bpy.ops.object.rotation_clear(clear_delta=False) #Clears the rotation of the terrain
 
     cleanup(self)
 
@@ -450,7 +463,73 @@ def assign_materials(self):
                     tex_num += 1
         except KeyError:
             print("Material not found: ", k)
+
+#THIS CODE SUCKS BUT IT WORKS SO I DONT CARE ANYMORE
+def add_terrain_dyemaps(self, objects):
+    for obj in objects:
+        prefix = obj.name[:8]
+        
+        for slot in obj.material_slots:
+            material = slot.material
+            if len(material.name) > 8: #ugh
+               continue
+            
+            if material:
+                if bpy.data.materials.get(f"{prefix}_{material.name}") is not None:
+                    slot.material = bpy.data.materials[f"{prefix}_{material.name}"]
+                else:
+                    #Copy and rename the material
+                    material_copy = material.copy()
+                    material_copy.name = f"{prefix}_{material.name}"
+                    slot.material = material_copy
+
+                    #Add the dyemap textures
+                    tex_num = 1 #To keep track of the current position in the list
+                    matnodes = bpy.data.materials[material_copy.name].node_tree.nodes
+
+                    if bpy.data.node_groups.get("Dyemap Converter") is None:
+                        #Gets the terrain nodegroup from the addon directory
+                        addon_dir = os.path.dirname(__file__)
+                        full_path = os.path.join(addon_dir, "D2MapImporter/D2TerrainNode.blend")
+
+                        # Load the node group
+                        with bpy.data.libraries.load(full_path) as (data_from, data_to):
+                            data_to.node_groups = ["Dyemap Converter"]
+
+                    # Check if the node group was loaded successfully
+                    if "Dyemap Converter" in bpy.data.node_groups:
+                        # Create a new node for the loaded node group
+                        terrain_node = matnodes.new(type='ShaderNodeGroup')
+                        terrain_node.name = "Dyemap Converter"
+                        terrain_node.location = (-70.0, 700.0)  # Set the location of the node
+                        terrain_node.node_tree = bpy.data.node_groups["Dyemap Converter"]
+                    else:
+                        print(f"Failed to load node group.")
+
+                   
+                    for tex in self.config["TerrainDyemaps"][prefix]:
+                        texnode = matnodes.new('ShaderNodeTexImage')
+                        texnode.hide = True
+                        texnode.location = (-370.0, 600.0 + (float(tex_num)*-1.1)*50)  # Shitty offsetting
+
+                        texture = bpy.data.images.get(tex + image_extension)
+                        if texture:
+                            texnode.label = texture.name
+                            texture.colorspace_settings.name = "Non-Color"
+                            texnode.extension = 'EXTEND'
+                            texture.alpha_mode = "CHANNEL_PACKED"
+                            texnode.image = texture  # Assign the texture to the node
+
+                        material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num}'], texnode.outputs[0])
+                        material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num} A'], texnode.outputs[1])
+                        if self.use_terrain_dyemap_output:
+                            material_copy.node_tree.links.new(terrain_node.outputs[0], material_copy.node_tree.nodes.get("Material Output").inputs[0])
+                        tex_num += 1
                     
+                    # frame_node = matnodes.new(type='NodeFrame')
+                    # frame_node.label = "Have Fun..."
+                    # terrain_node.parent = frame_node
+
 def find_nodes_by_type(material, node_type):
     """ Return a list of all of the nodes in the material
         that match the node type.
