@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Destiny 2 Map Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 5, 1),
+    "version": (0, 5, 2),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps exported from Charm",
@@ -501,16 +501,17 @@ def add_terrain_dyemaps(self, objects):
                         # Create a new node for the loaded node group
                         terrain_node = matnodes.new(type='ShaderNodeGroup')
                         terrain_node.name = "Dyemap Converter"
-                        terrain_node.location = (-70.0, 700.0)  # Set the location of the node
+                        terrain_node.location = (-370.0, 700.0)  # Set the location of the node
                         terrain_node.node_tree = bpy.data.node_groups["Dyemap Converter"]
                     else:
                         print(f"Failed to load node group.")
 
-                   
+                    frame_node = matnodes.new(type='NodeFrame')
+                    frame_node.label = "Terrain Dyemaps"
                     for tex in self.config["TerrainDyemaps"][prefix]:
                         texnode = matnodes.new('ShaderNodeTexImage')
                         texnode.hide = True
-                        texnode.location = (-370.0, 600.0 + (float(tex_num)*-1.1)*50)  # Shitty offsetting
+                        texnode.location = (-700.0, 600.0 + (float(tex_num)*-1.1)*50)  # Shitty offsetting
 
                         texture = bpy.data.images.get(tex + image_extension)
                         if texture:
@@ -519,11 +520,15 @@ def add_terrain_dyemaps(self, objects):
                             texnode.extension = 'EXTEND'
                             texture.alpha_mode = "CHANNEL_PACKED"
                             texnode.image = texture  # Assign the texture to the node
+                            texnode.parent = frame_node
 
-                        material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num}'], texnode.outputs[0])
-                        material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num} A'], texnode.outputs[1])
-                        if self.use_terrain_dyemap_output:
-                            material_copy.node_tree.links.new(terrain_node.outputs[0], material_copy.node_tree.nodes.get("Material Output").inputs[0])
+                        try:
+                            material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num}'], texnode.outputs[0])
+                            material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num} A'], texnode.outputs[1])
+                            if self.use_terrain_dyemap_output:
+                                material_copy.node_tree.links.new(terrain_node.outputs[0], material_copy.node_tree.nodes.get("Material Output").inputs[0])
+                        except:
+                            print(f'{material_copy.name}: Index {tex_num} out of range for terrain node group')
                         tex_num += 1
                     
                     # frame_node = matnodes.new(type='NodeFrame')
