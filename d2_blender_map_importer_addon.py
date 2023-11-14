@@ -508,29 +508,32 @@ def add_terrain_dyemaps(self, objects):
 
                     frame_node = matnodes.new(type='NodeFrame')
                     frame_node.label = "Terrain Dyemaps"
-                    for tex in self.config["TerrainDyemaps"][prefix]:
-                        texnode = matnodes.new('ShaderNodeTexImage')
-                        texnode.hide = True
-                        texnode.location = (-700.0, 600.0 + (float(tex_num)*-1.1)*50)  # Shitty offsetting
+                    try:
+                        for tex in self.config["TerrainDyemaps"][prefix]:
+                            texnode = matnodes.new('ShaderNodeTexImage')
+                            texnode.hide = True
+                            texnode.location = (-700.0, 600.0 + (float(tex_num)*-1.1)*50)  # Shitty offsetting
 
-                        texture = bpy.data.images.get(tex + image_extension)
-                        if texture:
-                            texnode.label = texture.name
-                            texture.colorspace_settings.name = "Non-Color"
-                            texnode.extension = 'EXTEND'
-                            texture.alpha_mode = "CHANNEL_PACKED"
-                            texnode.image = texture  # Assign the texture to the node
-                            texnode.parent = frame_node
+                            texture = bpy.data.images.get(tex + image_extension)
+                            if texture:
+                                texnode.label = texture.name
+                                texture.colorspace_settings.name = "Non-Color"
+                                texnode.extension = 'EXTEND'
+                                texture.alpha_mode = "CHANNEL_PACKED"
+                                texnode.image = texture  # Assign the texture to the node
+                                texnode.parent = frame_node
 
-                        try:
-                            material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num}'], texnode.outputs[0])
-                            material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num} A'], texnode.outputs[1])
-                            if self.use_terrain_dyemap_output:
-                                material_copy.node_tree.links.new(terrain_node.outputs[0], material_copy.node_tree.nodes.get("Material Output").inputs[0])
-                        except:
-                            print(f'{material_copy.name}: Index {tex_num} out of range for terrain node group')
-                        tex_num += 1
-                    
+                            try:
+                                material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num}'], texnode.outputs[0])
+                                material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num} A'], texnode.outputs[1])
+                                if self.use_terrain_dyemap_output:
+                                    material_copy.node_tree.links.new(terrain_node.outputs[0], material_copy.node_tree.nodes.get("Material Output").inputs[0])
+                            except:
+                                print(f'{material_copy.name}: Index {tex_num} out of range for terrain node group')
+                            tex_num += 1
+                    except Exception as error:
+                        print(error)
+
                     # frame_node = matnodes.new(type='NodeFrame')
                     # frame_node.label = "Have Fun..."
                     # terrain_node.parent = frame_node
