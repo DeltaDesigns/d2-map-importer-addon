@@ -8,12 +8,12 @@ import requests
 import json
 
 bl_info = {
-    "name": "Destiny 2 Map Importer",
+    "name": "Destiny 2 Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 5, 2),
+    "version": (0, 6, 0),
     "blender": (3, 0, 0),
     "location": "File > Import",
-    "description": "Import Destiny 2 Maps exported from Charm",
+    "description": "Import Destiny 2 Maps/Objects exported from Charm",
     "warning": "BETA",
     "category": "Import",
     "package": "d2_map_importer"
@@ -32,6 +32,7 @@ custom_icon_col = {}
 update_available = False
 patch_notes = ""
 latest_version = ""
+
 image_extension = ".png"
 
 class ImportD2Map(Operator, ImportHelper):
@@ -94,7 +95,7 @@ class ImportD2Map(Operator, ImportHelper):
 
     override_light_color: BoolProperty(
             name="Override empty light color",
-            description="Makes all lights with no color to full white",
+            description="Converts all lights with no color to full white",
             default=False,
             )
     
@@ -103,12 +104,6 @@ class ImportD2Map(Operator, ImportHelper):
             description="Use terrain dyemaps as the main shader output",
             default=False,
             )
-    
-    # import_individual_fbx: BoolProperty(
-    #         name="Import Individual FBX (Read tooltip!)",
-    #         description="REQUIRES DELTADESIGNS' UNOFFICIAL VERISON OF CHARM!\n\nExport Individual Static and Entites settings in Charm must be True.\n\nExperimental, Not guaranteed to be faster",
-    #         default=False,
-    #         )
 
     def draw(self, context):
         layout = self.layout
@@ -136,8 +131,7 @@ class ImportD2Map(Operator, ImportHelper):
         bpy.ops.object.select_all(action='DESELECT')
 
         if self.files:
-            ShowMessageBox(f"Importing...", "This might take some time! (Especially on multiple imports)", 'ERROR')
-            
+            #ShowMessageBox(f"Importing...", "This might take some time! (Especially on multiple imports)", 'ERROR')
             dirname = os.path.dirname(self.filepath)
             
             # Create a list of (file, size) tuples and sort by size
@@ -145,22 +139,19 @@ class ImportD2Map(Operator, ImportHelper):
             sorted_files = sorted(file_sizes, key=lambda x: x[1], reverse=True)
 
             for file, size in sorted_files:
-                self.Filepath = dirname
-                            
+                self.Filepath = dirname           
                 print(f"File: {file.name}")
                 print(f"Name: {file.name[:-9]}")
-                print(f"Path: {self.Filepath}")  # Use self.Filepath here
+                print(f"Path: {self.Filepath}")
                 print(f"Size: {size} bytes")
 
-                # To give the message box a chance to show up
-                assemble_map(self, file, self.Filepath)
+                import_cfg(self, file, self.Filepath)
 
-
-        return {'FINISHED'}            # Lets Blender know the operator finished successfully.
+        return {'FINISHED'} # Lets Blender know the operator finished successfully.
 
 #Where all the fun happens..
 
-def assemble_map(self, file, Filepath):
+def import_cfg(self, file, Filepath):
     self.static_names = {}
 
     Name = file.name[:-9] #Removes the _info.cfg from the name
@@ -170,11 +161,6 @@ def assemble_map(self, file, Filepath):
     if "Type" in self.config:
         self.type = self.config["Type"]
 
-    #Skip if theres nothing to import
-    # if self.config["Instances"].items().__len__() == 0 and ("Map" or "Terrain") in self.type:  
-    #     print(f"No instances found in {Name}, skipping...")
-    #     return
- 
     print(f"Starting import on {self.type}: {Name}")
    
     # for name, data in self.config["Decals"].items():
@@ -189,56 +175,6 @@ def assemble_map(self, file, Filepath):
     bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
 
-    #Import Lights, testing
-    if self.import_lights:
-        if "Lights" in self.config:
-            for name, lights in self.config["Lights"].items():
-                for data in lights: 
-                    if bpy.data.lights.get(data["Type"] + f"_{name}") is None:
-                        # Create a new point light
-                        light_data = bpy.data.lights.new(name=data["Type"] + f"_{name}", type=data["Type"].upper())
-                        light_object = bpy.data.objects.new(name=data["Type"] + f"_{name}", object_data=light_data)
-                        bpy.context.collection.objects.link(light_object)
-
-                        # Check if the selected object is an Area light
-                        if light_object.data.type == 'AREA':
-                            # Change the shape and size of the light
-                            light_object.data.shape = 'RECTANGLE'  # Set the shape to rectangle
-
-                            # Set the size of the light
-                            light_object.data.size = data["Size"][0]/2  # Set the width to 2.0 units
-                            light_object.data.size_y = data["Size"][1]/2 # Set the height to 1.0 unit
-
-                        # Set the light's color
-                        color = data["Color"]
-                        if data["Color"] == [0,0,0] and self.override_light_color:
-                            color = [1,1,1]
-                        light_object.data.color = color  # RGB values ranging from 0.0 to 1.0
-                        light_object.data.energy = self.light_intensity_override
-
-                        # Set the light to be visible in the viewport and in renders
-                        light_object.hide_viewport = False
-                        light_object.hide_render = False
-
-                        location = [data["Translation"][0], data["Translation"][1], data["Translation"][2]]
-                        # Reminder that Blender uses WXYZ, the order in the config file is XYZW, so W is always first
-                        quat = mathutils.Quaternion([data["Rotation"][3], data["Rotation"][0], data["Rotation"][1], data["Rotation"][2]])
-
-                        light_object.location = location
-                        light_object.rotation_mode = 'QUATERNION'
-                        light_object.rotation_quaternion = quat
-                    else:
-                        light_object = bpy.data.objects.get(data["Type"] + f"_{name}").copy()
-                        bpy.context.collection.objects.link(light_object) #makes the instances
-
-                        location = [data["Translation"][0], data["Translation"][1], data["Translation"][2]]
-                        # Reminder that Blender uses WXYZ, the order in the config file is XYZW, so W is always first
-                        quat = mathutils.Quaternion([data["Rotation"][3], data["Rotation"][0], data["Rotation"][1], data["Rotation"][2]])
-
-                        light_object.location = location
-                        light_object.rotation_mode = 'QUATERNION'
-                        light_object.rotation_quaternion = quat
-                    
     # Check if the file exists
     if os.path.isfile(Filepath+ "\\" + Name + ".fbx"):
         bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True)
@@ -250,8 +186,6 @@ def assemble_map(self, file, Filepath):
 
     newobjects = bpy.data.collections[str(Name)].objects
 
-    print(f"Imported {self.type}: {Name}")
-    
     #Merge statics, create instances for maps only
     if Is_Map(self):
         if self.combine_statics: #and not "Dynamics" in self.type:
@@ -283,7 +217,7 @@ def assemble_map(self, file, Filepath):
                         bpy.ops.object.select_all(action='DESELECT')
 
                         for obj in obj_list:
-                            print(f"  {obj.name}")
+                            #print(f"  {obj.name}")
                             obj.select_set(True)
 
                         bpy.ops.object.join()
@@ -364,10 +298,11 @@ def assemble_map(self, file, Filepath):
     
     if not Is_Map(self):
         for x in newobjects:
-            print(x)
             if len(self.config["Parts"].items()) <= 1: #Fix for error that occurs when theres only 1 object in the fbx
                 for newname, value in self.config["Parts"].items():
                     x.name = newname
+        # if "Entity" in self.type:
+        #     fix_dup_bones(self, newobjects)
 
         for x in newobjects:
             x.select_set(True)
@@ -377,6 +312,8 @@ def assemble_map(self, file, Filepath):
 
     if self.use_import_materials:
         assign_materials(self)
+        if "API" in self.type:
+            assign_gear_shader(self, newobjects, Filepath)
 
     if "Terrain" in self.type:
         if "TerrainDyemaps" in self.config:
@@ -385,7 +322,61 @@ def assemble_map(self, file, Filepath):
             x.select_set(True)
             bpy.ops.object.rotation_clear(clear_delta=False) #Clears the rotation of the terrain
 
+        #Import Lights, testing
+    if self.import_lights:
+        add_lights(self)
+                    
     cleanup(self)
+    print(f"Finished Importing {self.type}: {Name}")
+
+def add_lights(self):
+    if "Lights" in self.config:
+        for name, lights in self.config["Lights"].items():
+            for data in lights: 
+                if bpy.data.lights.get(data["Type"] + f"_{name}") is None:
+                    # Create a new point light
+                    light_data = bpy.data.lights.new(name=data["Type"] + f"_{name}", type=data["Type"].upper())
+                    light_object = bpy.data.objects.new(name=data["Type"] + f"_{name}", object_data=light_data)
+                    bpy.context.collection.objects.link(light_object)
+
+                    # Check if the selected object is an Area light
+                    if light_object.data.type == 'AREA':
+                        # Change the shape and size of the light
+                        light_object.data.shape = 'RECTANGLE'  # Set the shape to rectangle
+
+                        # Set the size of the light
+                        light_object.data.size = data["Size"][0]/2  # Set the width to 2.0 units
+                        light_object.data.size_y = data["Size"][1]/2 # Set the height to 1.0 unit
+
+                    # Set the light's color
+                    color = data["Color"]
+                    if data["Color"] == [0,0,0] and self.override_light_color:
+                        color = [1,1,1]
+                    light_object.data.color = color  # RGB values ranging from 0.0 to 1.0
+                    light_object.data.energy = self.light_intensity_override
+
+                    # Set the light to be visible in the viewport and in renders
+                    light_object.hide_viewport = False
+                    light_object.hide_render = False
+
+                    location = [data["Translation"][0], data["Translation"][1], data["Translation"][2]]
+                    # Reminder that Blender uses WXYZ, the order in the config file is XYZW, so W is always first
+                    quat = mathutils.Quaternion([data["Rotation"][3], data["Rotation"][0], data["Rotation"][1], data["Rotation"][2]])
+
+                    light_object.location = location
+                    light_object.rotation_mode = 'QUATERNION'
+                    light_object.rotation_quaternion = quat
+                else:
+                    light_object = bpy.data.objects.get(data["Type"] + f"_{name}").copy()
+                    bpy.context.collection.objects.link(light_object) #makes the instances
+
+                    location = [data["Translation"][0], data["Translation"][1], data["Translation"][2]]
+                    # Reminder that Blender uses WXYZ, the order in the config file is XYZW, so W is always first
+                    quat = mathutils.Quaternion([data["Rotation"][3], data["Rotation"][0], data["Rotation"][1], data["Rotation"][2]])
+
+                    light_object.location = location
+                    light_object.rotation_mode = 'QUATERNION'
+                    light_object.rotation_quaternion = quat
 
 def assign_materials(self):
     print("Assigning materials...")
@@ -402,13 +393,15 @@ def assign_materials(self):
             else:
                 if len(self.config["Parts"].items()) <= 1:
                     for name, mat in self.config["Parts"].items():
-                        bpy.data.objects[name[:8]].active_material.name = mat
+                        if bpy.data.objects[name[:8]].type == 'MESH':
+                            bpy.data.objects[name[:8]].active_material.name = mat
 
     for obj in bpy.data.objects: #remove any duplicate materials that may have been created
-        for slt in obj.material_slots:
-            part = slt.name.rpartition('.')
-            if part[2].isnumeric() and part[0] in materials:
-                slt.material = materials.get(part[0])
+        if obj.type == 'MESH':
+            for slt in obj.material_slots:
+                part = slt.name.rpartition('.')
+                if part[2].isnumeric() and part[0] in materials:
+                    slt.material = materials.get(part[0])
         
     #Get all the images in the directory and load them
     #Should probably change this to only load the textures included in the cfg, as to not load unneeded textures
@@ -421,9 +414,7 @@ def assign_materials(self):
                 image_extension = ".tga"
             print(f"Loaded {img}")
     
-    #New way of getting info from cfg, thank you Mont
     d = {x : y["PS"] for x, y in self.config["Materials"].items()}
-    
     for k, mat in d.items():
         try:
             matnodes = bpy.data.materials[k].node_tree.nodes
@@ -540,6 +531,104 @@ def add_terrain_dyemaps(self, objects):
                     # frame_node.label = "Have Fun..."
                     # terrain_node.parent = frame_node
 
+def assign_gear_shader(self, objects, Filepath):
+    #Fix up duplicate bones/vertex groups
+    for obj in objects:
+        if obj.type == 'MESH':
+            vertex_groups = obj.vertex_groups
+            for group in vertex_groups:
+                part = group.name.rpartition('.')
+                if part[2].isnumeric():
+                    group.name = group.name.split(".")[0]
+
+        if obj.type == 'ARMATURE':
+            bpy.ops.object.mode_set(mode='EDIT')
+            armature = obj.data
+            for bone in armature.edit_bones:
+                part = bone.name.rpartition('.')
+                if part[2].isnumeric():
+                    print(f'Deleted duplicate bone: {bone.name}')
+                    armature.edit_bones.remove(bone)
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        ##########
+
+        #Assign gear shader          
+        #Kinda dumb way to check but it works
+        diffuse_check = bpy.data.images.get(f'{obj.name[:8]}_albedo{image_extension}')
+        if obj.type == 'MESH' and diffuse_check:
+            for slot in obj.material_slots:
+                if bpy.data.materials.get(f"D2GearShader") is None:
+                    addon_dir = os.path.dirname(__file__)
+                    full_path = os.path.join(addon_dir, "D2MapImporter/D2GearShader.blend")
+                    # Load the node group
+                    with bpy.data.libraries.load(full_path) as (data_from, data_to):
+                        data_to.materials = ["D2GearShader", "D2ReticleShader"]
+                
+                #Copy and rename the material
+                bpy.data.materials.get(f"D2ReticleShader").use_fake_user = True
+                material_copy = bpy.data.materials.get(f"D2GearShader").copy()
+                material_copy.name = f"{obj.name[:8]}"
+                slot.material = material_copy
+
+                diffuse = bpy.data.images.get(f'{obj.name[:8]}_albedo{image_extension}')
+                if diffuse:
+                    diffuse.colorspace_settings.name = "sRGB"
+                    slot.material.node_tree.nodes.get("Diffuse Texture").image = diffuse
+
+                gstack = bpy.data.images.get(f'{obj.name[:8]}_gstack{image_extension}')
+                if gstack:
+                    gstack.colorspace_settings.name = "Non-Color"
+                    slot.material.node_tree.nodes.get("Gstack Texture").image = gstack
+
+                normal = bpy.data.images.get(f'{obj.name[:8]}_normal{image_extension}')
+                if normal:
+                    normal.colorspace_settings.name = "Non-Color"
+                    slot.material.node_tree.nodes.get("Normal Map").image = normal
+
+                dyemap = bpy.data.images.get(f'{obj.name[:8]}_dyemap{image_extension}')
+                if dyemap:
+                    dyemap.colorspace_settings.name = "Non-Color"
+                    slot.material.node_tree.nodes.get("Dyemap Texture").image = dyemap
+
+                if bpy.data.node_groups.get(f'{self.config["MeshName"]} Shader Preset') is None:
+                    bpy.context.view_layer.objects.active = obj
+                    bpy.ops.script.python_file_run(filepath=f'{Filepath}/{self.config["MeshName"]}.py')
+                    #Remove the unconnected shader from the material before assigning it
+                    bpy.data.materials[slot.material.name].node_tree.nodes.remove(bpy.data.materials[slot.material.name].node_tree.nodes.get(f'{self.config["MeshName"]} Shader Preset'))
+                
+                default_shader = bpy.data.materials[slot.material.name].node_tree.nodes.get(f'Shader Preset')
+                default_shader.node_tree = bpy.data.node_groups[f'{self.config["MeshName"]} Shader Preset']
+
+    ######
+    for obj in bpy.data.objects: #remove any duplicate materials that may have been created
+        for slt in obj.material_slots:
+            part = slt.name.rpartition('.')
+            if part[2].isnumeric() and part[0] in bpy.data.materials:
+                slt.material = bpy.data.materials.get(part[0])
+
+def fix_dup_bones(self, objects,):
+    #Fix up duplicate bones/vertex groups
+    for obj in objects:
+        if obj.type == 'MESH':
+            vertex_groups = obj.vertex_groups
+            for group in vertex_groups:
+                part = group.name.rpartition('.')
+                if part[2].isnumeric():
+                    group.name = group.name.split(".")[0]
+
+        if obj.type == 'ARMATURE':
+            bpy.ops.object.mode_set(mode='EDIT')
+            armature = obj.data
+            for bone in armature.edit_bones:
+                part = bone.name.rpartition('.')
+                if part[2].isnumeric():
+                    print(f'Deleted duplicate bone: {bone.name}')
+                    armature.edit_bones.remove(bone)
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        ##########
+
 def find_nodes_by_type(material, node_type):
     """ Return a list of all of the nodes in the material
         that match the node type.
@@ -577,7 +666,6 @@ def link_diffuse(material):
     if shader_socket.is_linked:
         return
     material.node_tree.links.new(shader_socket, image_socket)
-
 
 def link_normal(material, num = 0):
     it_list = find_nodes_by_type(material, 'TEX_IMAGE')
@@ -685,7 +773,6 @@ def createprojectionbox(name, corner1, corner2, material):
             )
             uv_layer[loop_index].uv = uv
 
-
 def add_to_collection(self):
     # List of object references
     objs = bpy.context.selected_objects
@@ -751,9 +838,8 @@ def check_for_updates():
     if lat_version_number > cur_version_number:
         return True
 
-
 def menu_func_import(self, context):
-    self.layout.operator(ImportD2Map.bl_idname, text="Destiny 2 Map Importer (.cfg)", icon_value=custom_icon_col["import"]['D2ICON'].icon_id)
+    self.layout.operator(ImportD2Map.bl_idname, text="Destiny 2 Importer (.cfg)", icon_value=custom_icon_col["import"]['D2ICON'].icon_id)
 
 def register():
     import bpy.utils.previews
@@ -773,7 +859,5 @@ def unregister():
     bpy.utils.unregister_class(ImportD2Map)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
 
-# This allows you to run the script directly from Blender's Text editor
-# to test the add-on without having to install it.
 if __name__ == "__main__":
     register()
