@@ -852,6 +852,7 @@ if __name__ == "__main__":
     register()
 
 name_mappings = {
+    #Player
     "68516489": "ForeArm.L",
     "162487657": "Thigh.L",
     "238325804": "Ring_2.R",
@@ -923,5 +924,97 @@ name_mappings = {
     "4107497571": "Brow_1.R",
     "4256326025": "Thumb_1.L",
     "4256326026": "Thumb_2.L",
-    "4256326027": "Thumb_3.L"
+    "4256326027": "Thumb_3.L",
+
+    #Hand Cannon
+    "670643234": "Hammer",
+    "179750274": "Magazine",
+    "3172630974": "Cylinder",
+    "1065563964": "CraneExtend",
+    "1065563967": "CraneRotate",
+    "2801973004": "Trigger",
+
+    #Bows
+    "152950191": "LongLowerTip",
+    "3277629381": "RecurveLowerTip",
+    "1450310728": "CompoundLowerOuterCam",
+    "569756239": "CompoundLowerOuterString",
+    "2233234667": "RecurveLowerLimb",
+    "21914261": "LongLowerLimb",
+    "886208418": "CompoundLowerOuterLimb",
+    "634921014": "CompoundLowerInnerLimb",
+    "1211875009": "CompoundLowerInnerCam",
+    "2501296090": "CompoundLowerInnerString",
+    "3289385034": "Pedestal",
+    "2602623454": "LowerString",
+    "1924163835": "Arrow",
+    "190434716": "Draw",
+    "263086803": "UpperString",
+    "3159705457": "CompoundUpperInnerLimb",
+    "3121359236": "CompoundUpperInnerCam",
+    "3221991651": "CompoundUpperInnerString",
+    "3640763343": "CompoundUpperOuterLimb",
+    "2142955286": "LongUpperLimb",
+    "4042000504": "RecurveUpperLimb",
+    "3876678289": "CompoundUpperOuterCam",
+    "3755358794": "CompoundUpperOuterString",
+    "171139942": "RecurveUpperTip",
+    "705518836": "LongUpperTip",
+
+    #Heavy GL
+    "3885002795": "Sight",
+    "4265614694": "CylinderLock",
+    "1965908788": "Barrel",
+    "946255672": "Cylinder",
+
+    #Linear FR
+    "2364075346": "Magazine",
+    "2876281604": "Clamp.B",
+    "4069453615": "Clamp.F",
+
+    #Light GL
+    "179750274": "Magazine",
+    "1965908788": "Barrel",
+    "3885002795": "Sight",
+
+    #Machine Gun
+    "3802038685": "Magazine",
+    "1967105434": "ChargingHandle",
+    "2427246326": "CoverLatch",
+    "1965908788": "Barrel",
+    "2665672028": "Cover",
+    "4198891668": "Bullet1",
+    "4198891671": "Bullet2",
+    "4198891670": "Bullet3",
+    "4198891665": "Bullet4",
+    "4198891664": "Bullet5",
+    "4198891667": "Bullet6",
+    "4198891666": "Bullet7",
+    "4198891677": "Bullet8",
+    "4198891676": "Bullet9",
+
+    #Tube Launcher
+    "1384189948": "LockingRing_1",
+    "179750274": "Magazine",
+    "1480745610": "Clip",
+    "125467058": "LockingRing_2",
+
+    #Mag Launcher
+    "179750274": "Magazine",
+    "856221388": "Chamber",
+    "1965908788": "Barrel",
+    "4228944116": "Grip",
+    "2905212365": "MagCover_1",
+    "3080347657": "MagCover_2",
+
+    #Sparrow
+    "2523032141": "Front",
+    "2998140119": "Ski",
+    "369029301": "Body",
+    "3566855300": "Fin.R",
+    "4139241506": "Fin.L",
+    "667083509": "Pedal.R",
+    "3740636964": "Tail.R",
+    "2500435051": "Pedal.L",
+    "1397456654": "Tail.L",
 }
