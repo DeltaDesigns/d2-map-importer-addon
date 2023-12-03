@@ -10,7 +10,7 @@ import json
 bl_info = {
     "name": "Destiny 2 Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 6, 0),
+    "version": (0, 6, 2),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps/Objects exported from Charm",
@@ -177,7 +177,7 @@ def import_cfg(self, file, Filepath):
 
     # Check if the file exists
     if os.path.isfile(Filepath+ "\\" + Name + ".fbx"):
-        bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=True, automatic_bone_orientation=True)
+        bpy.ops.import_scene.fbx(filepath=Filepath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=False, automatic_bone_orientation=True)# force_connect_children=True)
     else:
         print(f"Could not find FBX: {Name}")
         return
@@ -532,27 +532,8 @@ def add_terrain_dyemaps(self, objects):
                     # terrain_node.parent = frame_node
 
 def assign_gear_shader(self, objects, Filepath):
-    #Fix up duplicate bones/vertex groups
+    fix_dupe_bones(self, objects)
     for obj in objects:
-        if obj.type == 'MESH':
-            vertex_groups = obj.vertex_groups
-            for group in vertex_groups:
-                part = group.name.rpartition('.')
-                if part[2].isnumeric():
-                    group.name = group.name.split(".")[0]
-
-        if obj.type == 'ARMATURE':
-            bpy.ops.object.mode_set(mode='EDIT')
-            armature = obj.data
-            for bone in armature.edit_bones:
-                part = bone.name.rpartition('.')
-                if part[2].isnumeric():
-                    print(f'Deleted duplicate bone: {bone.name}')
-                    armature.edit_bones.remove(bone)
-
-        bpy.ops.object.mode_set(mode='OBJECT')
-        ##########
-
         #Assign gear shader          
         #Kinda dumb way to check but it works
         diffuse_check = bpy.data.images.get(f'{obj.name[:8]}_albedo{image_extension}')
@@ -607,27 +588,35 @@ def assign_gear_shader(self, objects, Filepath):
             if part[2].isnumeric() and part[0] in bpy.data.materials:
                 slt.material = bpy.data.materials.get(part[0])
 
-def fix_dup_bones(self, objects,):
-    #Fix up duplicate bones/vertex groups
+#Fix up duplicate bones/vertex groups
+def fix_dupe_bones(self, objects,):
+    #Rename vertex weights first
     for obj in objects:
         if obj.type == 'MESH':
             vertex_groups = obj.vertex_groups
             for group in vertex_groups:
-                part = group.name.rpartition('.')
-                if part[2].isnumeric():
-                    group.name = group.name.split(".")[0]
+                if "." in group.name:
+                    part = group.name.split(".")
+                    if part[1].isnumeric():
+                        group.name = group.name.split(".")[0]
 
+    for obj in objects:
+        #Turns out renaming bones automatically renames the vertex weights?
         if obj.type == 'ARMATURE':
-            bpy.ops.object.mode_set(mode='EDIT')
-            armature = obj.data
-            for bone in armature.edit_bones:
-                part = bone.name.rpartition('.')
-                if part[2].isnumeric():
-                    print(f'Deleted duplicate bone: {bone.name}')
-                    armature.edit_bones.remove(bone)
+                bpy.ops.object.mode_set(mode='EDIT')
+                armature = obj.data
+                for bone in armature.edit_bones:
+                    if "." in bone.name:
+                        part = bone.name.split(".")
+                        if part[1].isnumeric():
+                            print(f'Deleted duplicate bone: {bone.name}')
+                            armature.edit_bones.remove(bone)
+                    else:
+                        key = str(int.from_bytes(bytes.fromhex(bone.name), byteorder="little"))
+                        if key in name_mappings:
+                            bone.name = name_mappings[key]
 
         bpy.ops.object.mode_set(mode='OBJECT')
-        ##########
 
 def find_nodes_by_type(material, node_type):
     """ Return a list of all of the nodes in the material
@@ -861,3 +850,78 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+
+name_mappings = {
+    "68516489": "ForeArm.L",
+    "162487657": "Thigh.L",
+    "238325804": "Ring_2.R",
+    "238325805": "Ring_3.R",
+    "238325807": "Ring_1.R",
+    "262875985": "Index_1.L",
+    "262875986": "Index_2.L",
+    "262875987": "Index_3.L",
+    "280710669": "Neck_1",
+    "280710670": "Neck_2",
+    "375707561": "Clav.R",
+    "458076469": "Calf.L",
+    "523186112": "Pinky_3.R",
+    "523186113": "Pinky_2.R",
+    "523186114": "Pinky_1.R",
+    "542709204": "Eye.R",
+    "839315438": "Upper_Eyelid.L",
+    "847516523": "Toe.R",
+    "976064003": "Clav.L",
+    "988249757": "Toe.L",
+    "1061868683": "Calf.R",
+    "1087804030": "Head",
+    "1101907617": "Upper_Lip_Corner.L",
+    "1287540002": "Eye.L",
+    "1348403735": "UpperArm.R",
+    "1462169378": "Lower_Lip_Corner.R",
+    "1565559567": "Foot.L",
+    "1575008697": "Foot.R",
+    "1741390732": "Hand.L",
+    "1857732807": "Pelvis",
+    "2072385340": "Pinky_1.L",
+    "2072385342": "Pinky_3.L",
+    "2072385343": "Pinky_2.L",
+    "2133354418": "Shoulder_Twist_Fixup.R",
+    "2137193665": "Brow_1.L",
+    "2362576799": "Thigh.R",
+    "2384109844": "Lower_Lip_Corner.L",
+    "2453682432": "Thumb_2.R",
+    "2453682433": "Thumb_3.R",
+    "2453682435": "Thumb_1.R",
+    "2527141216": "Middle_3.R",
+    "2527141217": "Middle_2.R",
+    "2527141218": "Middle_1.R",
+    "2592422609": "Ring_1.L",
+    "2592422610": "Ring_2.L",
+    "2592422611": "Ring_3.L",
+    "2608135088": "Middle_1.L",
+    "2608135090": "Middle_3.L",
+    "2608135091": "Middle_2.L",
+    "2666588544": "Utility",
+    "2720736209": "UpperArm.L",
+    "2728809121": "Spine_1",
+    "2728809122": "Spine_2",
+    "2728809123": "Spine_3",
+    "2996271826": "Jaw",
+    "3184076039": "Upper_Lip_Corner.R",
+    "3399990467": "Grip.L",
+    "3441260707": "ForeArm.R",
+    "3470599597": "Wrist_Twist_Fixup.R",
+    "3597451020": "Upper_Eyelid.R",
+    "3848821786": "Pedestal",
+    "3886930732": "Shoulder_Twist_Fixup.L",
+    "3932921310": "Hand.R",
+    "3940624003": "Wrist_Twist_Fixup.L",
+    "4014713625": "Grip.R",
+    "4056396384": "Index_2.R",
+    "4056396385": "Index_3.R",
+    "4056396387": "Index_1.R",
+    "4107497571": "Brow_1.R",
+    "4256326025": "Thumb_1.L",
+    "4256326026": "Thumb_2.L",
+    "4256326027": "Thumb_3.L"
+}
