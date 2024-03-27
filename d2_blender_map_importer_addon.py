@@ -33,8 +33,6 @@ update_available = False
 patch_notes = ""
 latest_version = ""
 
-image_extension = ".png"
-
 class ImportD2Map(Operator, ImportHelper):
     bl_idname = "d2map.import"        # Unique identifier for buttons and menu items to reference.
     bl_label = "Import .cfg"         # Display name in the interface.
@@ -380,7 +378,7 @@ def add_lights(self):
 
 def assign_materials(self):
     print("Assigning materials...")
-    
+    global image_extension
     materials = bpy.data.materials
     for k in materials: #Removes the last _ and anything after it in the material name, so the name matches the config files
         if k.name.count("_") > 1:
@@ -494,7 +492,7 @@ def add_terrain_dyemaps(self, objects):
                         # Create a new node for the loaded node group
                         terrain_node = matnodes.new(type='ShaderNodeGroup')
                         terrain_node.name = "Dyemap Converter"
-                        terrain_node.location = (-370.0, 700.0)  # Set the location of the node
+                        terrain_node.location = (20.0, 1200.0)  # Set the location of the node
                         terrain_node.node_tree = bpy.data.node_groups["Dyemap Converter"]
                     else:
                         print(f"Failed to load node group.")
@@ -502,10 +500,20 @@ def add_terrain_dyemaps(self, objects):
                     frame_node = matnodes.new(type='NodeFrame')
                     frame_node.label = "Terrain Dyemaps"
                     try:
-                        for tex in self.config["TerrainDyemaps"][prefix]:
+                        # Get the total number of inputs in the node
+                        num_inputs = 16  # Total number of inputs in the node
+                        num_textures = len(self.config["TerrainDyemaps"][prefix])
+
+                        # Calculate the starting index for texture assignment
+                        start_index = num_inputs - num_textures
+
+                        # Iterate through the textures and assign them to the node inputs
+                        for i, tex in enumerate(self.config["TerrainDyemaps"][prefix]):
+                            input_index = (start_index + i + 1) % (num_inputs + 1)  # Adjusted for 1-based indexing
+
                             texnode = matnodes.new('ShaderNodeTexImage')
                             texnode.hide = True
-                            texnode.location = (-700.0, 600.0 + (float(tex_num)*-1.1)*50)  # Shitty offsetting
+                            texnode.location = (-360.0, 1200.0 + (float(tex_num) * -1.1) * 50)  # Shitty offsetting
 
                             texture = bpy.data.images.get(tex + image_extension)
                             if texture:
@@ -517,12 +525,13 @@ def add_terrain_dyemaps(self, objects):
                                 texnode.parent = frame_node
 
                             try:
-                                material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num}'], texnode.outputs[0])
-                                material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {tex_num} A'], texnode.outputs[1])
+                                material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {input_index}'], texnode.outputs[0])
+                                material_copy.node_tree.links.new(terrain_node.inputs[f'Dyemap {input_index} A'], texnode.outputs[1])
                                 if self.use_terrain_dyemap_output:
                                     material_copy.node_tree.links.new(terrain_node.outputs[0], material_copy.node_tree.nodes.get("Material Output").inputs[0])
                             except:
-                                print(f'{material_copy.name}: Index {tex_num} out of range for terrain node group')
+                                print(f'{material_copy.name}: Index {input_index} out of range for terrain node group')
+
                             tex_num += 1
                     except Exception as error:
                         print(error)
