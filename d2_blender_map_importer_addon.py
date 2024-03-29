@@ -10,7 +10,7 @@ import json
 bl_info = {
     "name": "Destiny 2 Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 6, 2),
+    "version": (0, 6, 9),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps/Objects exported from Charm",
