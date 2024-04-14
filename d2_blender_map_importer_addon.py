@@ -10,7 +10,7 @@ import json
 bl_info = {
     "name": "Destiny 2 Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (0, 6, 9),
+    "version": (0, 7, 0),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny 2 Maps/Objects exported from Charm",
@@ -86,7 +86,7 @@ class ImportD2Map(Operator, ImportHelper):
     light_intensity_override: FloatProperty(
         name="Light Intensity",
         description="Imported light intensity",
-        default=200.0,  # Default value
+        default=75.0,  # Default value
         min=0.0,      # Minimum value
         soft_max=10000.0,  # Maximum value
     )
@@ -581,14 +581,15 @@ def assign_gear_shader(self, objects, Filepath):
                     dyemap.colorspace_settings.name = "Non-Color"
                     slot.material.node_tree.nodes.get("Dyemap Texture").image = dyemap
 
-                if bpy.data.node_groups.get(f'{self.config["MeshName"]} Shader Preset') is None:
-                    bpy.context.view_layer.objects.active = obj
-                    bpy.ops.script.python_file_run(filepath=f'{Filepath}/{self.config["MeshName"]}.py')
-                    #Remove the unconnected shader from the material before assigning it
-                    bpy.data.materials[slot.material.name].node_tree.nodes.remove(bpy.data.materials[slot.material.name].node_tree.nodes.get(f'{self.config["MeshName"]} Shader Preset'))
-                
-                default_shader = bpy.data.materials[slot.material.name].node_tree.nodes.get(f'Shader Preset')
-                default_shader.node_tree = bpy.data.node_groups[f'{self.config["MeshName"]} Shader Preset']
+                if os.path.exists(path=f'{Filepath}/{self.config["MeshName"]}.py'):
+                    if bpy.data.node_groups.get(f'{self.config["MeshName"]} Shader Preset') is None:
+                        bpy.context.view_layer.objects.active = obj
+                        bpy.ops.script.python_file_run(filepath=f'{Filepath}/{self.config["MeshName"]}.py')
+                        #Remove the unconnected shader from the material before assigning it
+                        bpy.data.materials[slot.material.name].node_tree.nodes.remove(bpy.data.materials[slot.material.name].node_tree.nodes.get(f'{self.config["MeshName"]} Shader Preset'))
+                    
+                    default_shader = bpy.data.materials[slot.material.name].node_tree.nodes.get(f'Shader Preset')
+                    default_shader.node_tree = bpy.data.node_groups[f'{self.config["MeshName"]} Shader Preset']
 
     ######
     for obj in bpy.data.objects: #remove any duplicate materials that may have been created
