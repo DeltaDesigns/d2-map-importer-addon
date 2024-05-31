@@ -53,8 +53,8 @@ class ImportDestinyCfg(Operator, ImportHelper):
 
     merge_meshes: BoolProperty(
             name="Combine Meshes",
-            description="Combine all parts of a model into one mesh\nMay slow down import but can increase performace",
-            default=True,
+            description="Combine all parts of a model into one mesh\nWill slow down import (drastically on large maps) but can increase performace slightly",
+            default=False,
             )
 
     use_import_materials: BoolProperty(
@@ -88,6 +88,11 @@ class ImportDestinyCfg(Operator, ImportHelper):
             description="Use terrain dyemaps as the main shader output",
             default=False,
             )
+    import_dyn_points: BoolProperty(
+            name="Import Dynamic Points",
+            description="Import empties for dynamic points (not very useful for normal users)",
+            default=False,
+            )
 
     def draw(self, context):
         layout = self.layout
@@ -104,6 +109,7 @@ class ImportDestinyCfg(Operator, ImportHelper):
         box2 = layout.box()
         box2.label(text="Misc:")
         box2.prop(self, 'use_terrain_dyemap_output')
+        box2.prop(self, 'import_dyn_points')
         
         if update_available:
             box = layout.box()
@@ -124,6 +130,8 @@ class ImportDestinyCfg(Operator, ImportHelper):
 
             global FilePath
             for file, size in sorted_files:
+                if(('EntityPoints' in file.name) and not self.import_dyn_points):
+                    continue
                 FilePath = dirname           
                 print(f"File: {file.name}")
                 print(f"Name: {file.name[:-9]}")
@@ -166,50 +174,43 @@ def ImportFBX(self):
     # Merge meshes, create instances for maps only
     if Is_Map(Type):
         if self.merge_meshes: 
-            for meshes, mesh in Cfg["Parts"].items():
-                bpy.ops.object.select_all(action='DESELECT')
-                for part, material in mesh.items():
-                    obj = bpy.data.objects.get(part)
-                    if not obj:
-                        continue
-                    print(f"Combining meshes for '{meshes}':")
-                    bpy.context.view_layer.objects.active = obj  # Set the active object for joining
-                    obj.select_set(True)
-                bpy.ops.object.join()
-
-            bpy.ops.object.select_all(action='DESELECT')
+           CombineMeshes()
             
         # Loops through "Instances" in the Cfg and creates the instances with their transforms
         for mesh, instances in Cfg["Instances"].items():
             if mesh not in Cfg["Parts"]:
                 continue
+
+            # Kind of a hacky fix but this stops entities with skeletons from being copied more times than they should
+            entityCopied = False
             for part, material in Cfg["Parts"][mesh].items():
                 obj = bpy.data.objects.get(part)
-                if obj is None:
-                    continue  # Skip if the object doesn't exist
+                if obj is None or entityCopied:
+                    continue
                 
                 for i, instance in enumerate(instances):
+                    # Creates instance
+                    original_armature = bpy.data.objects[part].find_armature()
+                    if original_armature: # For dynamics with skeletons, need to copy the skeleton and meshes THEN reparent the copied meshes to the copied skeleton and change its armature modifier...
+                        obj = duplicate_armature_with_children(original_armature)
+                        entityCopied = True
+                    else: 
+                        obj = obj.copy()
+                        bpy.context.collection.objects.link(obj)
+
                     # Get instance transforms
                     location = instance["Translation"]
                     scale = instance["Scale"]
                     if isinstance(scale, float):  # Compatibility for older Charm versions
                         scale = [scale] * 3
                     # WXYZ
-                    quat = mathutils.Quaternion(
-                        [instance["Rotation"][3], instance["Rotation"][0], instance["Rotation"][1], instance["Rotation"][2]]
-                    )
+                    quat = mathutils.Quaternion([instance["Rotation"][3], instance["Rotation"][0], instance["Rotation"][1], instance["Rotation"][2]])
 
                     # Set transforms
                     obj.location = location
                     obj.rotation_mode = 'QUATERNION'
                     obj.rotation_quaternion = quat
                     obj.scale = scale
-
-                    # Don't make a copy/new instance if we're at the end of the list
-                    if i + 1 < len(instances):
-                        # Create a copy of the object and link it to the current collection
-                        new_obj = obj.copy()
-                        bpy.context.collection.objects.link(new_obj)
     else:
         # Clear all transforms, because everything imports tiny and rotated on its side for some reason
         for obj in GetCfgParts():
@@ -233,7 +234,6 @@ def ImportFBX(self):
             bpy.ops.object.rotation_clear(clear_delta=False)
 
     cleanup()
-
 
 
 #--------------------------------------------------------------------#    
