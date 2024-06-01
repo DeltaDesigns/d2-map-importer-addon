@@ -16,17 +16,22 @@ def assign_materials():
                     slt.material = materials.get(part[0])
         
     # Get all the needed textures images and load them
-    d = {x : y["PS"] for x, y in globals.Cfg["Materials"].items()}
+    d = {x : y for x, y in globals.Cfg["Materials"].items()}
     for k, mat in d.items():
         try:
-            matnodes = bpy.data.materials[k].node_tree.nodes
+            material = bpy.data.materials[k]
+            material.use_backface_culling = mat["BackfaceCulling"]
+            if 'Decorators' in str(globals.Cfg["MeshName"]):
+                material.shadow_method = 'NONE'
+            
+            matnodes = material.node_tree.nodes
             if matnodes.find('Principled BSDF') != -1:
                 matnodes['Principled BSDF'].inputs['Metallic'].default_value = 0 
 
             # To make sure the current material already doesnt have at least one texture node
             if not len(find_nodes_by_type(bpy.data.materials[k], 'TEX_IMAGE')) > 0:
                 tex_num = 0 # To keep track of the current position in the list
-                for n, info in mat.items():
+                for n, info in mat["Textures"]["PS"].items():
                     tex_image = GetTexture(info["Hash"])
                     if info["SRGB"]:
                         colorspace = "sRGB"

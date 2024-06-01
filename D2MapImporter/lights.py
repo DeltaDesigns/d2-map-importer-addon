@@ -27,6 +27,7 @@ def add_lights(self):
                         color = [1,1,1]
                     light_object.data.color = color  # RGB values ranging from 0.0 to 1.0
                     light_object.data.energy = self.light_intensity_override
+                    light_object.data.shadow_soft_size = data["Range"]
 
                     # Set the light to be visible in the viewport and in renders
                     light_object.hide_viewport = False
