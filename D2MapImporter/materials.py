@@ -21,7 +21,7 @@ def assign_materials():
         try:
             material = bpy.data.materials[k]
             material.use_backface_culling = mat["BackfaceCulling"]
-            if 'Decorators' in str(globals.Cfg["MeshName"]):
+            if 'Decorators' in globals.Cfg["MeshName"]:
                 material.shadow_method = 'NONE'
             
             matnodes = material.node_tree.nodes

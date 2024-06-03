@@ -54,11 +54,12 @@ def GetTexture(image_name):
 
 def cleanup():
     print(f"Cleaning up...")
-    for obj in GetCfgParts():
-        skele = obj.find_armature()
-        if(skele):
-            bpy.data.objects.remove(skele)
-        bpy.data.objects.remove(obj)
+    if Is_Map(globals.Type):
+        for obj in GetCfgParts():
+            skele = obj.find_armature()
+            if(skele):
+                bpy.data.objects.remove(skele)
+            bpy.data.objects.remove(obj)
 
     bpy.ops.outliner.orphans_purge(do_recursive = True)
     # # Removes unused data such as duplicate images, materials, etc.
