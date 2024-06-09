@@ -39,7 +39,7 @@ def GetCfgParts():
 
 def GetTexture(image_name):
     # List of common image extensions
-    image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.gif', '*.tiff', '*.webp']
+    image_extensions = ['*.dds', '*.tga', '*.jpg', '*.jpeg', '*.png', '*.bmp', '*.gif', '*.tiff', '*.webp']
 
     # Iterate through extensions and search for matching files
     for extension in image_extensions:
