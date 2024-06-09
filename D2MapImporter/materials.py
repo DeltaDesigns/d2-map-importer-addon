@@ -42,8 +42,8 @@ def assign_materials():
                     texnode.hide = True
                     texnode.location = (-370.0, 200.0 + (float(tex_num)*-1.1)*50) # Offsetting
 
-                    texture = bpy.data.images.get(tex_image)
-                    if texture:
+                    if tex_image:
+                        texture = bpy.data.images.get(tex_image)
                         texnode.label = texture.name
                         texture.colorspace_settings.name = colorspace
                         texture.alpha_mode = "CHANNEL_PACKED"

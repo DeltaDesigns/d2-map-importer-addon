@@ -9,7 +9,7 @@ def ShowMessageBox(message = "", title = "Message Box", icon = 'INFO'):
     bpy.context.window_manager.popup_menu(draw, title = title, icon = icon)
 
 def Is_Map(type):
-    return any(x in type for x in ["Map", "Terrain", "Dynamics", "ActivityEntities"])
+    return any(x in type for x in ["Map", "Dynamics", "ActivityEntities"])
 
 def add_to_collection(name):
     # List of object references

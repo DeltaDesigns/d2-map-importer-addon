@@ -5,7 +5,7 @@ import os
 import D2MapImporter.helper_functions as Helpers
 
 def assign_gear_shader():
-    #fix_dupe_bones()
+    fix_dupe_bones()
     for obj in Helpers.GetCfgParts():
         # Assign gear shader          
         # Kinda dumb way to check but it works
@@ -95,7 +95,9 @@ def assign_gear_shader():
 
 # Fix up duplicate bones/vertex groups
 def fix_dupe_bones():
-    # Rename vertex weights first
+    main_armature = Helpers.GetCfgParts()[0].find_armature()
+
+    # Rename vertex weights if there are duplicates
     for obj in Helpers.GetCfgParts():
         if obj.type == 'MESH':
             vertex_groups = obj.vertex_groups
@@ -105,24 +107,36 @@ def fix_dupe_bones():
                     if part[1].isnumeric():
                         group.name = group.name.split(".")[0]
 
+    # Remove duplicate skeletons and parent everything to the main skeleton
     for obj in Helpers.GetCfgParts():
-        # Turns out renaming bones automatically renames the vertex weights?
         obj_armature = obj.find_armature()
+        if obj_armature and (obj_armature == main_armature):
+            continue
         if obj_armature:
-                bpy.ops.object.mode_set(mode='EDIT')
-                armature = obj_armature.data
-                for bone in armature.edit_bones:
-                    if "." in bone.name:
-                        part = bone.name.split(".")
-                        if part[1].isnumeric():
-                            print(f'Deleted duplicate bone: {bone.name}')
-                            armature.edit_bones.remove(bone)
-                    else:
-                        key = str(int.from_bytes(bytes.fromhex(bone.name), byteorder="little"))
-                        if key in name_mappings:
-                            bone.name = name_mappings[key]
+            bpy.data.objects.remove(obj_armature)
 
-        bpy.ops.object.mode_set(mode='OBJECT')
+        # Parent part to the main skeleton
+        obj.parent = main_armature
+        for modifier in obj.modifiers:
+            if modifier.type == 'ARMATURE':
+                modifier.object = main_armature
+
+    
+    bpy.context.view_layer.objects.active = main_armature
+    bpy.ops.object.mode_set(mode='EDIT')
+    armature = main_armature.data
+    for bone in armature.edit_bones:
+        if "." in bone.name:
+            part = bone.name.split(".")
+            if part[1].isnumeric():
+                print(f'Deleted duplicate bone: {bone.name}')
+                armature.edit_bones.remove(bone)
+        else:
+            key = str(int.from_bytes(bytes.fromhex(bone.name), byteorder="little"))
+            if key in name_mappings:
+                bone.name = name_mappings[key]
+
+    bpy.ops.object.mode_set(mode='OBJECT')
 
 name_mappings = {
     #Player

@@ -229,9 +229,9 @@ def ImportFBX(self):
     if "Terrain" in Type:
         if "TerrainDyemaps" in Cfg:
             add_terrain_dyemaps(self)
-        for obj in GetCfgParts():
-            obj.select_set(True)
-            bpy.ops.object.rotation_clear(clear_delta=False)
+        # for obj in GetCfgParts():
+        #     obj.select_set(True)
+        #     bpy.ops.object.rotation_clear(clear_delta=False)
 
     cleanup()
 
