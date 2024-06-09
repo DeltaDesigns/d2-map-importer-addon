@@ -96,7 +96,8 @@ def assign_gear_shader():
 # Fix up duplicate bones/vertex groups
 def fix_dupe_bones():
     main_armature = Helpers.GetCfgParts()[0].find_armature()
-
+    main_armature.name = globals.Cfg["MeshName"]
+    
     # Rename vertex weights if there are duplicates
     for obj in Helpers.GetCfgParts():
         if obj.type == 'MESH':
