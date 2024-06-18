@@ -53,28 +53,28 @@ class ImportDestinyCfg(Operator, ImportHelper):
 
     merge_meshes: BoolProperty(
             name="Combine Meshes",
-            description="Combine all parts of a model into one mesh\nWill slow down import (drastically on large maps) but can increase performace slightly",
+            description="Combine all parts of a model into one mesh.\nWill slow down import (drastically on large maps) but can increase performace slightly",
             default=False,
             )
 
     use_import_materials: BoolProperty(
             name="Import Textures",
-            description="Imports textures and tries to apply them to the models\nTextures folder must be in the same place as the .cfg you are importing",
+            description="Imports textures and tries to apply them to the models.\nTextures folder must be in the same place as the .cfg you are importing",
             default=True,
             )
     
     import_lights: BoolProperty(
             name="Import Lights",
-            description="Imports basic Point Lights\nSome light colors can/will be wrong\nIntensity is the same for all",
+            description="Imports lights.\nSome light colors and intensities can/will be wrong",
             default=True,
             )
     
     light_intensity_override: FloatProperty(
         name="Light Intensity",
         description="Imported light intensity",
-        default=75.0,  # Default value
+        default=10.0,  # Default value
         min=0.0,      # Minimum value
-        soft_max=10000.0,  # Maximum value
+        soft_max=1000.0,  # Maximum value
     )
 
     override_light_color: BoolProperty(
@@ -88,6 +88,7 @@ class ImportDestinyCfg(Operator, ImportHelper):
             description="Use terrain dyemaps as the main shader output",
             default=False,
             )
+    
     import_dyn_points: BoolProperty(
             name="Import Dynamic Points",
             description="Import empties for dynamic points (not very useful for normal users)",
@@ -169,7 +170,9 @@ def ImportFBX(self):
         add_to_collection(Name) 
     else:
         print(f"Could not find FBX: {Name}")
-        return
+        # If theres no fbx and no decals or lights in the cfg, skip the import
+        if len(Cfg["Decals"]) == 0 and len(Cfg["Lights"]) == 0:
+            return
     
     # Merge meshes, create instances for maps only
     if Is_Map(Type):
@@ -188,6 +191,9 @@ def ImportFBX(self):
                 if obj is None or entityCopied:
                     continue
                 
+                if 'Decorators' in globals.Cfg["MeshName"] or 'SkyEnts' in globals.Cfg["MeshName"]:
+                    obj.visible_shadow = False
+
                 for i, instance in enumerate(instances):
                     # Creates instance
                     original_armature = bpy.data.objects[part].find_armature()
