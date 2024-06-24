@@ -52,7 +52,7 @@ def add_lights(self):
    
                 light_object.location = location
                 light_object.rotation_mode = 'QUATERNION'
-                if light_object.data.type == 'SPOT' or 'AREA': # this seeeeems to work...?
+                if light_object.data.type == 'SPOT' or light_object.data.type == 'AREA': # this seeeeems to work...?
                     light_object.delta_rotation_quaternion = quat
                     light_object.rotation_quaternion =  mathutils.Quaternion([0.5,0.5,-0.5, -0.5 if light_object.data.type == 'SPOT' else 0.5])
                 else:
