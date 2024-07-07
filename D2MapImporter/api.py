@@ -6,22 +6,23 @@ import D2MapImporter.helper_functions as Helpers
 
 def assign_gear_shader():
     fix_dupe_bones()
+
+    if bpy.data.materials.get(f"D2GearShader") is None:
+        addon_dir = os.path.dirname(__file__)
+        full_path = os.path.join(addon_dir, "blends/D2GearShader.blend")
+        # Load the node group
+        with bpy.data.libraries.load(full_path) as (data_from, data_to):
+            data_to.materials = ["D2GearShader", "D2ReticleShader"]
+        bpy.data.materials.get(f"D2ReticleShader").use_fake_user = True
+        bpy.data.materials.get(f"D2GearShader").use_fake_user = True
+
     for obj in Helpers.GetCfgParts():
         # Assign gear shader          
         # Kinda dumb way to check but it works
-        diffuse_check = Helpers.GetTexture(f'{obj.name[:8]}_albedo')
-        if obj.type == 'MESH' and diffuse_check is not None:
+        if obj.type == 'MESH' and any("GEAR" in item for item in globals.Cfg["Materials"][obj.material_slots[0].name]["UsedScopes"] ):
             bpy.context.view_layer.objects.active = obj
-            for slot in obj.material_slots:
-                if bpy.data.materials.get(f"D2GearShader") is None:
-                    addon_dir = os.path.dirname(__file__)
-                    full_path = os.path.join(addon_dir, "blends/D2GearShader.blend")
-                    # Load the node group
-                    with bpy.data.libraries.load(full_path) as (data_from, data_to):
-                        data_to.materials = ["D2GearShader", "D2ReticleShader"]
-                
-                # Copy and rename the material
-                bpy.data.materials.get(f"D2ReticleShader").use_fake_user = True
+            
+            for slot in obj.material_slots:  
                 material_copy = bpy.data.materials.get(f"D2GearShader").copy()
                 material_copy.name = f"{obj.name[:8]}"
                 slot.material = material_copy
