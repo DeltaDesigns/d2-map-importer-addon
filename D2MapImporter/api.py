@@ -306,4 +306,17 @@ name_mappings = {
     "3740636964": "Tail.R",
     "2500435051": "Pedal.L",
     "1397456654": "Tail.L",
+
+    #Ghost
+    "97501788": "Front_Top",
+    "2363360285": "Front_Left",
+    "641560660": "Front_Bottom",
+    "3312104123": "Front_Right",
+    "1721440923": "Back_Top",
+    "3746015210": "Back_Right",
+    "3352605736": "Back_Left",
+    "1862604637": "Back_Bottom",
+    "607800139": "Front_Rotation",
+    "3612653654": "Back_Rotation",
+    "970243631": "Core"
 }
