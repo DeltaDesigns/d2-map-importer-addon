@@ -5,11 +5,10 @@ import sys
 bl_info = {
     "name": "Destiny Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (1, 2, 1),
+    "version": (1, 2, 5),
     "blender": (4, 0, 0),
     "location": "File > Import",
-    "description": "Import Destiny Maps/Objects exported from Charm",
-    "warning": "BETA",
+    "description": "Import Destiny rips from Charm",
     "category": "Import",
     "package": "destiny_importer"
     }

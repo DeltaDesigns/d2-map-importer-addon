@@ -166,7 +166,14 @@ def ImportFBX(self):
         bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
         bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
 
-        bpy.ops.import_scene.fbx(filepath=FilePath+ "\\" + Name + ".fbx", use_custom_normals=True, ignore_leaf_bones=False, automatic_bone_orientation=True)# force_connect_children=True)
+        bpy.ops.import_scene.fbx(filepath=FilePath+ "\\" + Name + ".fbx", 
+                                 use_custom_normals=True, 
+                                 ignore_leaf_bones=False, 
+                                 automatic_bone_orientation=True,
+                                 global_scale=100.0, 
+                                 use_manual_orientation=True, 
+                                 axis_up='Z', 
+                                 axis_forward='-X')# force_connect_children=True)
         add_to_collection(Name) 
     else:
         print(f"Could not find FBX: {Name}")
@@ -217,12 +224,12 @@ def ImportFBX(self):
                     obj.rotation_mode = 'QUATERNION'
                     obj.rotation_quaternion = quat
                     obj.scale = scale
-    else:
-        # Clear all transforms, because everything imports tiny and rotated on its side for some reason
-        for obj in GetCfgParts():
-            obj.select_set(True)
-            bpy.ops.object.rotation_clear(clear_delta=False)
-            bpy.ops.object.scale_clear(clear_delta=False)
+    # else:
+    #     # Clear all transforms, because everything imports tiny and rotated on its side for some reason
+    #     for obj in GetCfgParts():
+    #         obj.select_set(True)
+    #         bpy.ops.object.rotation_clear(clear_delta=False)
+    #         bpy.ops.object.scale_clear(clear_delta=False)
 
     if self.use_import_materials:
         assign_materials()
