@@ -1,6 +1,6 @@
 # Destiny 2 Importer Addon for Blender 4.0+
 ## !!UNINSTALL ANY PREVIOUS VERSIONS (Pre Blender 4.0) BEFORE INSTALLING THIS ONE!!
-Simple Blender addon that allows importing Destiny 2 rips from Charm
+Simple Blender addon that simplifies importing Destiny 2 rips from Charm
 
 Install like a normal Blender addon. **(install the zip from [Releases](https://github.com/DeltaDesigns/d2-map-importer-addon/releases), not just the py)**
 
