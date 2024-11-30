@@ -183,6 +183,11 @@ def ImportFBX(self):
     
     # Merge meshes, create instances for maps only
     if Is_Map(Type):
+        area = next(area for area in bpy.context.screen.areas if area.type == 'VIEW_3D')
+        space = area.spaces.active
+        space.clip_start = 0.05 
+        space.clip_end = 1000000.0  
+
         if self.merge_meshes: 
            CombineMeshes()
             
@@ -224,12 +229,14 @@ def ImportFBX(self):
                     obj.rotation_mode = 'QUATERNION'
                     obj.rotation_quaternion = quat
                     obj.scale = scale
-    # else:
-    #     # Clear all transforms, because everything imports tiny and rotated on its side for some reason
-    #     for obj in GetCfgParts():
-    #         obj.select_set(True)
-    #         bpy.ops.object.rotation_clear(clear_delta=False)
-    #         bpy.ops.object.scale_clear(clear_delta=False)
+    else:
+        # Apply transforms for API so deleting skeleton doesn't reset parented objects
+        for obj in GetCfgParts():
+            obj.select_set(True)
+            if "API" in Type:
+                bpy.ops.object.transform_apply()
+            elif "Terrain" in Type:
+                bpy.ops.object.rotation_clear(clear_delta=False)
 
     if self.use_import_materials:
         assign_materials()
@@ -239,12 +246,8 @@ def ImportFBX(self):
     if self.import_lights:
         add_lights(self)
 
-    if "Terrain" in Type:
-        if "TerrainDyemaps" in Cfg:
-            add_terrain_dyemaps(self)
-        # for obj in GetCfgParts():
-        #     obj.select_set(True)
-        #     bpy.ops.object.rotation_clear(clear_delta=False)
+    if ("Terrain" in Type) and ("TerrainDyemaps" in Cfg):
+        add_terrain_dyemaps(self)
 
     cleanup()
 

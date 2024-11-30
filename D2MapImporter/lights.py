@@ -34,11 +34,11 @@ def add_lights(self):
                             #light_object.data.energy = self.light_intensity_override * light_object.data.color.v # meh
                             
                         light_object.data.spot_size = data["Size"][0]
-                        light_object.data.cutoff_distance =  data["Range"]
+                        light_object.data.cutoff_distance = data["Range"]
                     elif light_object.data.type == 'AREA':
                         light_object.data.shape = 'RECTANGLE'
-                        light_object.data.size = data["Size"][1]
-                        light_object.data.size_y = data["Size"][0]
+                        light_object.data.size = data["Size"][1] * 0.85
+                        light_object.data.size_y = data["Size"][0] * 0.85
                         light_object.data.cutoff_distance = data["Range"]
                     else:
                         #light_object.data.shadow_soft_size = data["Size"][0] #data["Range"]/4 # idk
