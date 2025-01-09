@@ -22,7 +22,8 @@ def assign_materials():
             material = bpy.data.materials[k]
             material.use_backface_culling = mat["BackfaceCulling"]
             if 'Decorators' in globals.Cfg["MeshName"] or 'SkyEnts' in globals.Cfg["MeshName"]:
-                material.shadow_method = 'NONE'
+                if bpy.app.version < (4, 3, 0):
+                    material.shadow_method = 'NONE'
             
             matnodes = material.node_tree.nodes
             if matnodes.find('Principled BSDF') != -1:
