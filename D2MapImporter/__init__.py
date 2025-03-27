@@ -5,7 +5,7 @@ import sys
 bl_info = {
     "name": "Destiny Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (1, 2, 8),
+    "version": (1, 3, 0),
     "blender": (4, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny rips from Charm",

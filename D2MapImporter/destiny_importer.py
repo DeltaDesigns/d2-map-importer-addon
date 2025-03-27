@@ -130,15 +130,18 @@ class ImportDestinyCfg(Operator, ImportHelper):
             sorted_files = sorted(file_sizes, key=lambda x: x[1], reverse=True)
 
             global FilePath
-            for file, size in sorted_files:
-                if(('EntityPoints' in file.name) and not self.import_dyn_points):
-                    continue
-                FilePath = dirname           
+            FilePath = dirname
+            for file, size in sorted_files:  
+                if((('EntityPoints' in file.name) and not self.import_dyn_points) or file.name is ""):
+                    continue      
                 print(f"File: {file.name}")
                 print(f"Name: {file.name[:-9]}")
                 print(f"Path: {FilePath}")
                 print(f"Size: {size} bytes")
                 ReadCFG(self, file)
+            
+            if self.import_lights:
+                add_lights(self)
 
         return {'FINISHED'} # Lets Blender know the operator finished successfully.
 
@@ -242,9 +245,6 @@ def ImportFBX(self):
         assign_materials()
         if "API" in Type:
             assign_gear_shader()
-
-    if self.import_lights:
-        add_lights(self)
 
     if ("Terrain" in Type) and ("TerrainDyemaps" in Cfg):
         add_terrain_dyemaps(self)

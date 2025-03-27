@@ -108,14 +108,41 @@ def duplicate_armature_with_children(armature):
     return new_armature
 
 def CombineMeshes():
-    for meshes, mesh in globals.Cfg["Parts"].items():
-        bpy.ops.object.select_all(action='DESELECT')
-        print(f"Combining meshes for '{meshes}':")
-        for part, material in mesh.items():
-            obj = bpy.data.objects.get(part)
-            if not obj:
+    try:
+        for meshes, mesh in globals.Cfg["Parts"].items():
+            bpy.ops.object.select_all(action='DESELECT')
+            print(f"Combining meshes for '{meshes}':")
+
+            first_obj = None  # Track the first valid object to set as active
+            objects_to_join = []
+
+            for part, material in mesh.items():
+                obj = bpy.data.objects.get(part)
+                if not obj:
+                    continue
+                objects_to_join.append(obj)
+                if first_obj is None:
+                    first_obj = obj
+
+            # Ensure there's at least one object to join
+            if not first_obj or len(objects_to_join) < 2:
+                print(f"Skipping '{meshes}' as there are not enough objects to join.")
                 continue
-            bpy.context.view_layer.objects.active = obj  # Set the active object for joining
-            obj.select_set(True)
-        bpy.ops.object.join()
-    bpy.ops.object.select_all(action='DESELECT')
+
+            # Set the first object as active
+            bpy.context.view_layer.objects.active = first_obj
+
+            # Select all objects for joining
+            for obj in objects_to_join:
+                obj.select_set(True)
+
+            # Ensure we're in Object mode before joining
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+            # Perform the join operation
+            bpy.ops.object.join()
+
+            # Deselect all after joining
+            bpy.ops.object.select_all(action='DESELECT')
+    except Exception as error:
+        print(f'{globals.Cfg["MeshName"]}: {error}')
