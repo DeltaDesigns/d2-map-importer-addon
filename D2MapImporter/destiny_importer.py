@@ -10,6 +10,7 @@ from .helper_functions import *
 from .materials import *
 from .lights import *
 from .api import *
+from .decals import *
 
 # ImportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
@@ -55,7 +56,7 @@ class ImportDestinyCfg(Operator, ImportHelper):
 
     merge_meshes: BoolProperty(
             name="Combine Meshes",
-            description="Combine all parts of a model into one mesh.\nWill slow down import (drastically on large maps) but can increase performace slightly",
+            description="Combine all parts of a model into one mesh.\nMay increase performace on large maps",
             default=False,
             )
 
@@ -96,6 +97,12 @@ class ImportDestinyCfg(Operator, ImportHelper):
             description="Import empties for dynamic points (not very useful for normal users)",
             default=False,
             )
+    
+    import_decal_planes: BoolProperty(
+            name="Import Decal Planes",
+            description="Import decals as planes, this is will not actually project them on surfaces",
+            default=False,
+            )
 
     def draw(self, context):
         layout = self.layout
@@ -113,6 +120,7 @@ class ImportDestinyCfg(Operator, ImportHelper):
         box2.label(text="Misc:")
         box2.prop(self, 'use_terrain_dyemap_output')
         box2.prop(self, 'import_dyn_points')
+        box2.prop(self, 'import_decal_planes')
         
         if update_available:
             box = layout.box()
@@ -147,12 +155,15 @@ class ImportDestinyCfg(Operator, ImportHelper):
             if self.import_lights:
                 add_lights(self)
 
+            if self.import_decal_planes:
+                add_decal_planes(self)
+
             hash_import_list.clear()
             collection = bpy.data.collections.get("Import_Temp")
             if collection:
                 for obj in collection.objects:
                     bpy.data.objects.remove(obj, do_unlink=True)
-                bpy.data.collections.remove(collection)
+                bpy.data.collections.remove(collection, do_unlink=True)
 
         return {'FINISHED'} # Lets Blender know the operator finished successfully.
 
@@ -162,6 +173,10 @@ def PrepareMapImport(self, file):
     print(f"Starting import on {ExportType} {Type}: {Name}")
 
     if Cfg["ExportType"] == "Map":
+        if bpy.data.collections.get(str(Name)):
+            print(f"Collection {str(Name)} already exists, skipping...")
+            return
+
         collection = bpy.data.collections.get("Import_Temp")
         if not collection:
             bpy.data.collections.new("Import_Temp")
@@ -198,6 +213,11 @@ def DoImport(self):
         space.clip_end = 1000000.0  
 
         # Make a collection with the name of the imported fbx for the objects
+
+        if bpy.data.collections.get(str(Name)):
+            print(f"Collection {str(Name)} already exists, skipping...")
+            return
+
         bpy.data.collections.new(str(Name))
         bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
         bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
@@ -213,6 +233,10 @@ def DoImport(self):
 
     else:
         # Make a collection with the name of the imported fbx for the objects
+        if bpy.data.collections.get(str(Name)):
+            print(f"Collection {str(Name)} already exists, skipping...")
+            return
+
         bpy.data.collections.new(str(Name))
         bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
         bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]

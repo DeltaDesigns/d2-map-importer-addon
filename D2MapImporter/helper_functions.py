@@ -71,7 +71,7 @@ def GetTexture(image_name):
         if files:  # If any files are found, return the first one
             if bpy.data.images.get(os.path.basename(files[0])) is None:
                 bpy.data.images.load(files[0], check_existing = True)
-                print(f'Loaded {os.path.basename(files[0])}')
+                #print(f'Loaded {os.path.basename(files[0])}')
 
             img = os.path.basename(files[0])
             return img
@@ -205,7 +205,8 @@ def instance_mesh(mesh, instances):
     """Handles the instancing and transformation of meshes."""
     entity_copied = False
     for part, material in globals.Cfg["Parts"][mesh].items(): 
-        obj = bpy.data.objects.get(part)
+        #obj = bpy.data.objects.get(part)
+        obj = bpy.data.collections.get("Import_Temp").objects.get(part)
         if obj is None or entity_copied:
             continue
 

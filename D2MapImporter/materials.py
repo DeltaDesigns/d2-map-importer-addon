@@ -194,3 +194,59 @@ def add_terrain_dyemaps(self):
                     # frame_node = matnodes.new(type='NodeFrame')
                     # frame_node.label = "Have Fun..."
                     # terrain_node.parent = frame_node
+
+def create_material(self, name):
+    with open(f'{globals.FilePath}\\Materials\\{name}.json', 'r') as f:
+        data = json.load(f)
+            
+    ps_textures = data["Material"]["Pixel"]["Textures"]
+    vs_textures = data["Material"]["Vertex"]["Textures"]
+    
+    try:
+        material = bpy.data.materials.new(name=data["Hash"])
+        material.use_nodes = True
+
+        material = bpy.data.materials[data["Hash"]]
+
+        # Get Rasterizer settings
+        rasterizer = data["RenderStates"].get("Rasterizer")
+        cull_mode = rasterizer.get("CullMode") if rasterizer else None
+
+        # Set backface culling
+        if cull_mode == "None":
+            material.use_backface_culling = False if cull_mode == "None" else True
+
+        if "TRANSPARENT" in data["Scopes"]:
+            if bpy.app.version < (4, 3, 0):
+                material.shadow_method = 'NONE'
+        
+        matnodes = material.node_tree.nodes
+        if matnodes.find('Principled BSDF') != -1:
+            matnodes['Principled BSDF'].inputs['Metallic'].default_value = 0 
+
+        # To make sure the current material already doesnt have at least one texture node
+        if not len(find_nodes_by_type(material, 'TEX_IMAGE')) > 0:
+            tex_num = 0 # To keep track of the current position in the list
+            for n, info in ps_textures.items():
+                tex_image = GetTexture(info["Hash"])
+                colorspace = info["Colorspace"]
+
+                texnode = matnodes.new('ShaderNodeTexImage')
+                texnode.hide = True
+                texnode.location = (-370.0, 200.0 + (float(tex_num)*-1.1)*50) # Offsetting
+
+                if tex_image:
+                    texture = bpy.data.images.get(tex_image)
+                    texnode.label = texture.name
+                    texture.colorspace_settings.name = colorspace
+                    texture.alpha_mode = "CHANNEL_PACKED"
+                    texnode.image = texture      # Assign the texture to the node
+
+                    # Assign the first texture to material's diffuse just to help a little, good luck o7
+                    link_diffuse(material)
+
+                tex_num += 1
+    except KeyError as keyE:
+        print(f"{keyE}: ", data["Hash"])
+    except Exception as e:
+        print(e)

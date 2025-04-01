@@ -5,9 +5,15 @@ import json
 import os
 
 def add_lights(self):
+    print("Importing Lights...")
     if not os.path.exists(globals.FilePath + f"\\Rendering\\Lights.json"):
+        print(f"Could not find Lights.Json in '{globals.FilePath}\\Rendering', skipping...")
         return
     
+    if bpy.data.collections.get("Lights"):
+        print("Lights collection already exists, skipping...")
+        return
+
     bpy.data.collections.new("Lights")
     bpy.context.scene.collection.children.link(bpy.data.collections["Lights"])
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children["Lights"]
@@ -70,3 +76,5 @@ def add_lights(self):
                 light_object.rotation_quaternion =  mathutils.Quaternion([0.5,0.5,-0.5, -0.5 if light_object.data.type == 'SPOT' else 0.5])
             else:
                 light_object.rotation_quaternion = quat
+
+    print("Imported Lights.")
