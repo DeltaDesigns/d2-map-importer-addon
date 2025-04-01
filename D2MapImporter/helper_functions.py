@@ -2,14 +2,37 @@ import bpy
 import D2MapImporter.destiny_importer as globals
 import os
 import glob
+import mathutils
+import json
+import gc
+
+def ImportFBX(self, modelPath):
+    if os.path.isfile(modelPath):
+        print(f'Importing FBX {modelPath}')
+        bpy.ops.import_scene.fbx(filepath=modelPath,
+                                use_anim=False,
+                                use_custom_normals=True, 
+                                ignore_leaf_bones=False, 
+                                automatic_bone_orientation=True,
+                                global_scale=100.0, 
+                                use_image_search = False,
+                                use_manual_orientation=True, 
+                                axis_up='Z', 
+                                axis_forward='-X')# force_connect_children=True)
+        
+        #add_to_collection(globals.Name) 
+        return True
+    else:
+        print(f"Could not find FBX: {modelPath}")
+        return False
 
 def ShowMessageBox(message = "", title = "Message Box", icon = 'INFO'):
     def draw(self, context):
         self.layout.label(text=message)
     bpy.context.window_manager.popup_menu(draw, title = title, icon = icon)
 
-def Is_Map(type):
-    return any(x in type for x in ["Map", "Dynamics", "ActivityEntities"])
+def Is_Map(ExportType):
+    return "Map" in ExportType
 
 def add_to_collection(name):
     # List of object references
@@ -46,38 +69,24 @@ def GetTexture(image_name):
         pattern = os.path.join(globals.FilePath + "/Textures/", f"{image_name}{extension[1:]}")  # Remove '*' from extension
         files = glob.glob(pattern)
         if files:  # If any files are found, return the first one
-            bpy.data.images.load(files[0], check_existing = True)
+            if bpy.data.images.get(os.path.basename(files[0])) is None:
+                bpy.data.images.load(files[0], check_existing = True)
+                print(f'Loaded {os.path.basename(files[0])}')
+
             img = os.path.basename(files[0])
-            print(f'Loaded {img}')
             return img
     return None
 
 def cleanup():
     print(f"Cleaning up...")
-    if Is_Map(globals.Type):
-        for obj in GetCfgParts():
-            skele = obj.find_armature()
-            if(skele):
-                bpy.data.objects.remove(skele)
-            bpy.data.objects.remove(obj)
-
+    # if Is_Map(globals.Type):
+    #     for obj in GetCfgParts():
+    #         skele = obj.find_armature()
+    #         if(skele):
+    #             bpy.data.objects.remove(skele)
+    #         bpy.data.objects.remove(obj)
+    gc.collect()
     bpy.ops.outliner.orphans_purge(do_recursive = True)
-    # # Removes unused data such as duplicate images, materials, etc.
-    # for block in bpy.data.meshes:
-    #     if block.users == 0:
-    #         bpy.data.meshes.remove(block)
-
-    # for block in bpy.data.materials:
-    #     if block.users == 0:
-    #         bpy.data.materials.remove(block)
-
-    # for block in bpy.data.textures:
-    #     if block.users == 0:
-    #         bpy.data.textures.remove(block)
-
-    # for block in bpy.data.images:
-    #     if block.users == 0:
-    #         bpy.data.images.remove(block)
     print("Done cleaning up!")
 
 def duplicate_armature_with_children(armature):
@@ -126,7 +135,6 @@ def CombineMeshes():
 
             # Ensure there's at least one object to join
             if not first_obj or len(objects_to_join) < 2:
-                print(f"Skipping '{meshes}' as there are not enough objects to join.")
                 continue
 
             # Set the first object as active
@@ -146,3 +154,90 @@ def CombineMeshes():
             bpy.ops.object.select_all(action='DESELECT')
     except Exception as error:
         print(f'{globals.Cfg["MeshName"]}: {error}')
+
+def load_cfg(file_path):
+    """Load and return the configuration from a file."""
+    with open(file_path, 'r') as f:
+        return json.load(f)
+
+def prepare_and_process_map(self, sorted_files):
+    """Prepare and process files for map import."""
+    for file, size in sorted_files:
+        # Skip files based on conditions
+        if 'EntityPoints' in file.name and not self.import_dyn_points or file.name == "":
+            continue
+
+        print(f"File: {file.name}")
+        print(f"Name: {file.name[:-9]}")
+        print(f"Path: {globals.FilePath}")
+        print(f"Size: {size} bytes")
+
+        # Load configuration
+        globals.Cfg = load_cfg(globals.FilePath + f"\\{file.name}")
+        if "ExportType" not in globals.Cfg:
+            raise ImportError("You are trying to import an old cfg file. Only exports from Charm v2.5.0 or higher are supported on this version!")
+        
+        globals.Name = globals.Cfg["MeshName"]
+        globals.Type = globals.Cfg["Type"]
+        globals.ExportType = globals.Cfg["ExportType"]
+
+        # Prepare map import first
+        globals.PrepareMapImport(self, file)
+
+def process_instancing(self, sorted_files):
+    """Process the instancing logic after importing models."""
+    for file, size in sorted_files:
+        # Skip files based on conditions
+        if 'EntityPoints' in file.name and not self.import_dyn_points or file.name == "":
+            continue
+
+        # Load configuration
+        globals.Cfg = load_cfg(globals.FilePath + f"\\{file.name}")
+        
+        globals.Name = globals.Cfg["MeshName"]
+        globals.Type = globals.Cfg["Type"]
+        globals.ExportType = globals.Cfg["ExportType"]
+
+        # Handle instancing for the map or model
+        globals.DoImport(self)
+
+def instance_mesh(mesh, instances):
+    """Handles the instancing and transformation of meshes."""
+    entity_copied = False
+    for part, material in globals.Cfg["Parts"][mesh].items(): 
+        obj = bpy.data.objects.get(part)
+        if obj is None or entity_copied:
+            continue
+
+        # Handle specific type visibility settings
+        if any(x in globals.Type for x in ['Decorators', 'SkyObjects', 'WaterDecals', 'RoadDecals']):
+            obj.visible_shadow = False
+
+        # Creates instances
+        for i, instance in enumerate(instances):
+            # Handle armature duplication for skeleton-based meshes
+            armature = bpy.data.objects[part].find_armature()
+            if armature:
+                obj = armature 
+
+            if armature:
+                obj = duplicate_armature_with_children(armature)
+                entity_copied = True
+            else:
+                obj = obj.copy()
+                bpy.context.collection.objects.link(obj)
+
+            # Set instance transforms
+            location = instance["Translation"]
+            scale = instance["Scale"]
+            quat = mathutils.Quaternion([instance["Rotation"][3], instance["Rotation"][0], instance["Rotation"][1], instance["Rotation"][2]])
+            if globals.Type == "Terrain":
+                quat = mathutils.Quaternion([1,0,0,0])
+
+            obj.location = location
+            obj.rotation_mode = 'QUATERNION'
+            obj.rotation_quaternion = quat
+            obj.scale = scale
+
+            #if i != len(instances) - 1:  # Don't copy if this was the last instance
+               

@@ -1,6 +1,7 @@
 import D2MapImporter.destiny_importer as globals
 import bpy
 import os
+import json
 from .helper_functions import *
 
 def assign_materials():
@@ -14,48 +15,62 @@ def assign_materials():
                 part = slt.name.rpartition('.')
                 if part[2].isnumeric() and part[0] in materials:
                     slt.material = materials.get(part[0])
-        
-    # Get all the needed textures images and load them
-    d = {x : y for x, y in globals.Cfg["Materials"].items()}
-    for k, mat in d.items():
-        try:
-            material = bpy.data.materials[k]
-            material.use_backface_culling = mat["BackfaceCulling"]
-            if 'Decorators' in globals.Cfg["MeshName"] or 'SkyEnts' in globals.Cfg["MeshName"]:
-                if bpy.app.version < (4, 3, 0):
-                    material.shadow_method = 'NONE'
+    
+    #json_files = [f for f in os.listdir(f'{globals.FilePath}\\Materials') if f.endswith(".json")]
+
+    for part_name, part_data in globals.Cfg["Parts"].items():
+        for geom_name, material_hash in part_data.items():
+            with open(f'{globals.FilePath}\\Materials\\{material_hash}.json', 'r') as f:
+                data = json.load(f)
             
-            matnodes = material.node_tree.nodes
-            if matnodes.find('Principled BSDF') != -1:
-                matnodes['Principled BSDF'].inputs['Metallic'].default_value = 0 
+            ps_textures = data["Material"]["Pixel"]["Textures"]
+            vs_textures = data["Material"]["Vertex"]["Textures"]
+            
+            try:
+                material = bpy.data.materials[data["Hash"]]
 
-            # To make sure the current material already doesnt have at least one texture node
-            if not len(find_nodes_by_type(bpy.data.materials[k], 'TEX_IMAGE')) > 0:
-                tex_num = 0 # To keep track of the current position in the list
-                for n, info in mat["Textures"]["PS"].items():
-                    tex_image = GetTexture(info["Hash"])
-                    if info["SRGB"]:
-                        colorspace = "sRGB"
-                    else: 
-                        colorspace = "Non-Color"
+                # Get Rasterizer settings
+                rasterizer = data["RenderStates"].get("Rasterizer")
+                cull_mode = rasterizer.get("CullMode") if rasterizer else None
 
-                    texnode = matnodes.new('ShaderNodeTexImage')
-                    texnode.hide = True
-                    texnode.location = (-370.0, 200.0 + (float(tex_num)*-1.1)*50) # Offsetting
+                # Set backface culling
+                if cull_mode == "None":
+                    material.use_backface_culling = False if cull_mode == "None" else True
 
-                    if tex_image:
-                        texture = bpy.data.images.get(tex_image)
-                        texnode.label = texture.name
-                        texture.colorspace_settings.name = colorspace
-                        texture.alpha_mode = "CHANNEL_PACKED"
-                        texnode.image = texture      # Assign the texture to the node
+                if 'Decorators' in globals.Type or 'SkyObjects' in globals.Type:
+                    if bpy.app.version < (4, 3, 0):
+                        material.shadow_method = 'NONE'
+                
+                matnodes = material.node_tree.nodes
+                if matnodes.find('Principled BSDF') != -1:
+                    matnodes['Principled BSDF'].inputs['Metallic'].default_value = 0 
 
-                        # Assign the first texture to material's diffuse just to help a little, good luck o7
-                        link_diffuse(bpy.data.materials[k])
+                # To make sure the current material already doesnt have at least one texture node
+                if not len(find_nodes_by_type(material, 'TEX_IMAGE')) > 0:
+                    tex_num = 0 # To keep track of the current position in the list
+                    for n, info in ps_textures.items():
+                        tex_image = GetTexture(info["Hash"])
+                        colorspace = info["Colorspace"]
 
-                    tex_num += 1
-        except KeyError:
-            print("Material not found: ", k)
+                        texnode = matnodes.new('ShaderNodeTexImage')
+                        texnode.hide = True
+                        texnode.location = (-370.0, 200.0 + (float(tex_num)*-1.1)*50) # Offsetting
+
+                        if tex_image:
+                            texture = bpy.data.images.get(tex_image)
+                            texnode.label = texture.name
+                            texture.colorspace_settings.name = colorspace
+                            texture.alpha_mode = "CHANNEL_PACKED"
+                            texnode.image = texture      # Assign the texture to the node
+
+                            # Assign the first texture to material's diffuse just to help a little, good luck o7
+                            link_diffuse(material)
+
+                        tex_num += 1
+            except KeyError as keyE:
+                print(f"{keyE}: ", data["Hash"])
+            except Exception as e:
+                print(e)
 
 def find_nodes_by_type(material, node_type):
     """ Return a list of all of the nodes in the material

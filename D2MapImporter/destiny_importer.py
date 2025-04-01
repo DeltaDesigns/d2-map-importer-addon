@@ -2,9 +2,7 @@ from .__init__ import bl_info
 import bpy
 from bpy.props import *
 import json
-import mathutils
 import os
-import math
 import requests
 import json
 
@@ -25,7 +23,11 @@ from multiprocessing import Process, cpu_count
 Cfg = None
 FilePath = None
 Name = None
-Type = "Map" #Default to map
+Type = "Statics"
+ExportType = "Map" # Default
+
+# Yes I shamelessly let chaptgpt help me redo a lot of this
+# Fuck blender python, its awful in my very personal opinion
 
 class ImportDestinyCfg(Operator, ImportHelper):
     bl_idname = "destiny.importer"        # Unique identifier for buttons and menu items to reference.
@@ -118,139 +120,126 @@ class ImportDestinyCfg(Operator, ImportHelper):
             box.operator("wm.url_open", text="Get Latest Release").url = "https://github.com/DeltaDesigns/d2-map-importer-addon/releases/latest"
 
     def execute(self, context):
+        global Cfg, Name, Type, ExportType, FilePath
+        Cfg = None
+        FilePath = None
+        Name = None
+        Type = "Statics"
+        ExportType = "Map"
+
         # Deselect all objects just in case
         bpy.ops.object.select_all(action='DESELECT')
 
         if self.files:
-            #ShowMessageBox(f"Importing...", "This might take some time! (Especially on multiple imports)", 'ERROR')
             dirname = os.path.dirname(self.filepath)
-            
-            # Create a list of (file, size) tuples and sort by size
-            file_sizes = [(file, os.path.getsize(os.path.join(dirname, file.name))) for file in self.files]
-            sorted_files = sorted(file_sizes, key=lambda x: x[1], reverse=True)
-
-            global FilePath
             FilePath = dirname
-            for file, size in sorted_files:  
-                if((('EntityPoints' in file.name) and not self.import_dyn_points) or file.name is ""):
-                    continue      
-                print(f"File: {file.name}")
-                print(f"Name: {file.name[:-9]}")
-                print(f"Path: {FilePath}")
-                print(f"Size: {size} bytes")
-                ReadCFG(self, file)
+            
+            file_sizes = [(file, os.path.getsize(os.path.join(dirname, file.name))) for file in self.files]
+            # Import Terrain first since it needs its transforms modified outside of instancing, then do biggest to smallest
+            sorted_files = sorted(file_sizes, key=lambda x: (0 if "Terrain" in x[0].name else 1, -x[1])) 
+
+            # If a map, import every model from every cfg to save as much performance as possible
+            prepare_and_process_map(self, sorted_files)
+            
+            # This does the actual instancing after everything needed has been imported
+            process_instancing(self, sorted_files)    
             
             if self.import_lights:
                 add_lights(self)
 
+            hash_import_list.clear()
+            collection = bpy.data.collections.get("Import_Temp")
+            if collection:
+                for obj in collection.objects:
+                    bpy.data.objects.remove(obj, do_unlink=True)
+                bpy.data.collections.remove(collection)
+
         return {'FINISHED'} # Lets Blender know the operator finished successfully.
 
+# Import everything model needed first for performance reasons, if importing a map
+hash_import_list = []
+def PrepareMapImport(self, file):
+    print(f"Starting import on {ExportType} {Type}: {Name}")
+
+    if Cfg["ExportType"] == "Map":
+        collection = bpy.data.collections.get("Import_Temp")
+        if not collection:
+            bpy.data.collections.new("Import_Temp")
+            bpy.context.scene.collection.children.link(bpy.data.collections["Import_Temp"])
+
+        bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children["Import_Temp"]
+
+        # Import FBX files for all meshes
+        for mesh, instances in Cfg["Instances"].items():
+            if mesh not in Cfg["Parts"] or mesh in hash_import_list:
+                continue
+            hash_import_list.append(mesh)
+            
+            if Cfg["Type"] != "Terrain":
+                if not ImportFBX(self, os.path.join(f'{FilePath}\\Models\\{Type}', f"{mesh}.fbx")):
+                    continue
+            else:
+                files = glob.glob(os.path.join(f'{FilePath}\\Models\\{Type}', f"{mesh}*.fbx"))
+                for file in files:
+                    if not ImportFBX(self, file):
+                        continue
+        if self.merge_meshes: 
+            CombineMeshes()
+        cleanup()
+        
+
 # Where all the fun happens..
+def DoImport(self):
+    # Merge meshes/create instances for maps only
+    if Is_Map(ExportType):
+        area = next(area for area in bpy.context.screen.areas if area.type == 'VIEW_3D')
+        space = area.spaces.active
+        space.clip_start = 0.1 
+        space.clip_end = 1000000.0  
 
-def ReadCFG(self, file):
-    global Cfg, Name, Type
-
-    with open(FilePath + f"\\{file.name}", 'r') as f:
-        Cfg = json.load(f)
-    
-    Name = Cfg["MeshName"]
-    if "Type" in Cfg:
-        Type = Cfg["Type"]
-
-    print(f"Starting import on {Type}: {Name}")
-
-    ImportFBX(self)
-
-def ImportFBX(self):
-    # Check if the file exists
-    if os.path.isfile(FilePath+ "\\" + Name + ".fbx"):
         # Make a collection with the name of the imported fbx for the objects
         bpy.data.collections.new(str(Name))
         bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
         bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
 
-        bpy.ops.import_scene.fbx(filepath=FilePath+ "\\" + Name + ".fbx", 
-                                 use_custom_normals=True, 
-                                 ignore_leaf_bones=False, 
-                                 automatic_bone_orientation=True,
-                                 global_scale=100.0, 
-                                 use_manual_orientation=True, 
-                                 axis_up='Z', 
-                                 axis_forward='-X')# force_connect_children=True)
-        add_to_collection(Name) 
-    else:
-        print(f"Could not find FBX: {Name}")
-        # If theres no fbx and no decals or lights in the cfg, skip the import
-        if len(Cfg["Decals"]) == 0 and len(Cfg["Lights"]) == 0:
-            return
-    
-    # Merge meshes, create instances for maps only
-    if Is_Map(Type):
-        area = next(area for area in bpy.context.screen.areas if area.type == 'VIEW_3D')
-        space = area.spaces.active
-        space.clip_start = 0.05 
-        space.clip_end = 1000000.0  
-
-        if self.merge_meshes: 
-           CombineMeshes()
-            
-        # Loops through "Instances" in the Cfg and creates the instances with their transforms
+        # Loop through and instance meshes
         for mesh, instances in Cfg["Instances"].items():
             if mesh not in Cfg["Parts"]:
                 continue
+            
+            # Instance the meshes with the necessary transformations
+            print(f'Instancing {mesh}')
+            instance_mesh(mesh, instances)
 
-            # Kind of a hacky fix but this stops entities with skeletons from being copied more times than they should
-            entityCopied = False
-            for part, material in Cfg["Parts"][mesh].items():
-                obj = bpy.data.objects.get(part)
-                if obj is None or entityCopied:
-                    continue
-                
-                if 'Decorators' in globals.Cfg["MeshName"] or 'SkyEnts' in globals.Cfg["MeshName"]:
-                    obj.visible_shadow = False
-
-                for i, instance in enumerate(instances):
-                    # Creates instance
-                    original_armature = bpy.data.objects[part].find_armature()
-                    if original_armature: # For dynamics with skeletons, need to copy the skeleton and meshes THEN reparent the copied meshes to the copied skeleton and change its armature modifier...
-                        obj = duplicate_armature_with_children(original_armature)
-                        entityCopied = True
-                    else: 
-                        obj = obj.copy()
-                        bpy.context.collection.objects.link(obj)
-
-                    # Get instance transforms
-                    location = instance["Translation"]
-                    scale = instance["Scale"]
-                    if isinstance(scale, float):  # Compatibility for older Charm versions
-                        scale = [scale] * 3
-                    # WXYZ
-                    quat = mathutils.Quaternion([instance["Rotation"][3], instance["Rotation"][0], instance["Rotation"][1], instance["Rotation"][2]])
-
-                    # Set transforms
-                    obj.location = location
-                    obj.rotation_mode = 'QUATERNION'
-                    obj.rotation_quaternion = quat
-                    obj.scale = scale
     else:
-        # Apply transforms for API so deleting skeleton doesn't reset parented objects
-        for obj in GetCfgParts():
-            obj.select_set(True)
-            if "API" in Type:
-                bpy.ops.object.transform_apply()
-            elif "Terrain" in Type:
-                bpy.ops.object.rotation_clear(clear_delta=False)
+        # Make a collection with the name of the imported fbx for the objects
+        bpy.data.collections.new(str(Name))
+        bpy.context.scene.collection.children.link(bpy.data.collections[str(Name)])
+        bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
 
+        # Import single FBX if not a map
+        mesh_file = os.path.join(f'{FilePath}\\', f'{Cfg["MeshName"]}.fbx')
+        if not ImportFBX(self, mesh_file):
+            return
+        
+        # Apply transforms if API type
+        if "API" in Type or "D1API" in Type:
+            for obj in GetCfgParts():
+                obj.select_set(True)
+                bpy.ops.object.transform_apply()
+
+    # Assign materials if enabled
     if self.use_import_materials:
         assign_materials()
-        if "API" in Type:
+        if "API" in Type or "D1API" in Type:
             assign_gear_shader()
 
-    if ("Terrain" in Type) and ("TerrainDyemaps" in Cfg):
+    # Add terrain dyemaps if applicable
+    if "Terrain" in Type and "TerrainDyemaps" in Cfg:
         add_terrain_dyemaps(self)
 
+    # Final cleanup
     cleanup()
-
 
 #--------------------------------------------------------------------#    
 icons_dir = os.path.join(os.path.dirname(__file__), "icons")

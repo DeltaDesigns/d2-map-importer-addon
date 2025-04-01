@@ -3,6 +3,7 @@ import bpy
 import D2MapImporter.materials
 import os
 import D2MapImporter.helper_functions as Helpers
+import json
 
 def assign_gear_shader():
     fix_dupe_bones()
@@ -19,7 +20,12 @@ def assign_gear_shader():
     for obj in Helpers.GetCfgParts():
         # Assign gear shader          
         # Kinda dumb way to check but it works
-        if obj.type == 'MESH' and any("GEAR" in item for item in globals.Cfg["Materials"][obj.material_slots[0].name]["UsedScopes"] ):
+        with open(f'{globals.FilePath}\\Materials\\{obj.material_slots[0].name}.json', 'r') as f:
+            data = json.load(f)
+
+        CanAssign = obj.type == 'MESH' and (any("GEAR" in item for item in data["Scopes"]) if globals.Type == "API" else any("Gear" in item for item in data["Externs"])) 
+
+        if CanAssign:
             bpy.context.view_layer.objects.active = obj
             
             for slot in obj.material_slots:  
