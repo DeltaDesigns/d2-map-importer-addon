@@ -20,7 +20,7 @@ def assign_materials():
 
     for part_name, part_data in globals.Cfg["Parts"].items():
         for geom_name, material_hash in part_data.items():
-            with open(f'{globals.FilePath}\\Materials\\{material_hash}.json', 'r') as f:
+            with open(os.path.join(globals.AssetsPath, f'Materials\\{material_hash}.json'), 'r') as f:
                 data = json.load(f)
             
             ps_textures = data["Material"]["Pixel"]["Textures"]
@@ -196,7 +196,7 @@ def add_terrain_dyemaps(self):
                     # terrain_node.parent = frame_node
 
 def create_material(self, name):
-    with open(f'{globals.FilePath}\\Materials\\{name}.json', 'r') as f:
+    with open(os.path.join(globals.AssetsPath, f'Materials\\{name}.json'), 'r') as f:
         data = json.load(f)
             
     ps_textures = data["Material"]["Pixel"]["Textures"]

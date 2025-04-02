@@ -20,7 +20,7 @@ def assign_gear_shader():
     for obj in Helpers.GetCfgParts():
         # Assign gear shader          
         # Kinda dumb way to check but it works
-        with open(f'{globals.FilePath}\\Materials\\{obj.material_slots[0].name}.json', 'r') as f:
+        with open(os.path.join(globals.AssetsPath, f'Materials\\{obj.material_slots[0].name}.json'), 'r') as f:
             data = json.load(f)
 
         CanAssign = obj.type == 'MESH' and (any("GEAR" in item for item in data["Scopes"]) if globals.Type == "API" else any("Gear" in item for item in data["Externs"])) 
@@ -57,10 +57,10 @@ def assign_gear_shader():
                     dyemap.colorspace_settings.name = "Non-Color"
                     slot.material.node_tree.nodes.get("Dyemap Texture").image = dyemap
 
-                if os.path.exists(path=f'{globals.FilePath}/{globals.Cfg["MeshName"]}.py'):
+                if os.path.exists(path=f'{globals.AssetsPath}/{globals.Cfg["MeshName"]}.py'):
                     if bpy.data.node_groups.get(f'{globals.Cfg["MeshName"]}') is None:
                         bpy.context.view_layer.objects.active = obj
-                        bpy.ops.script.python_file_run(filepath=f'{globals.FilePath}/{globals.Cfg["MeshName"]}.py')
+                        bpy.ops.script.python_file_run(filepath=f'{globals.AssetsPath}/{globals.Cfg["MeshName"]}.py')
                     #     # Remove the unconnected shader from the material before assigning it
                     #     bpy.data.materials[slot.material.name].node_tree.nodes.remove(bpy.data.materials[slot.material.name].node_tree.nodes.get(f'{globals.Cfg["MeshName"]} Shader Preset'))
                     

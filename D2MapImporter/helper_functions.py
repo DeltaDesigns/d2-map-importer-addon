@@ -66,7 +66,7 @@ def GetTexture(image_name):
 
     # Iterate through extensions and search for matching files
     for extension in image_extensions:
-        pattern = os.path.join(globals.FilePath + "/Textures/", f"{image_name}{extension[1:]}")  # Remove '*' from extension
+        pattern = os.path.join(globals.AssetsPath, f"Textures/{image_name}{extension[1:]}")  # Remove '*' from extension
         files = glob.glob(pattern)
         if files:  # If any files are found, return the first one
             if bpy.data.images.get(os.path.basename(files[0])) is None:
@@ -180,6 +180,8 @@ def prepare_and_process_map(self, sorted_files):
         globals.Name = globals.Cfg["MeshName"]
         globals.Type = globals.Cfg["Type"]
         globals.ExportType = globals.Cfg["ExportType"]
+        globals.AssetsPath = globals.Cfg["AssetsPath"]
+        print(f"AssetsPath: {globals.AssetsPath}")
 
         # Prepare map import first
         globals.PrepareMapImport(self, file)
@@ -197,6 +199,7 @@ def process_instancing(self, sorted_files):
         globals.Name = globals.Cfg["MeshName"]
         globals.Type = globals.Cfg["Type"]
         globals.ExportType = globals.Cfg["ExportType"]
+        globals.AssetPath = globals.Cfg["AssetsPath"]
 
         # Handle instancing for the map or model
         globals.DoImport(self)

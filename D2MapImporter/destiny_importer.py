@@ -23,6 +23,7 @@ from multiprocessing import Process, cpu_count
 # Globals for cfg related stuff
 Cfg = None
 FilePath = None
+AssetsPath = None
 Name = None
 Type = "Statics"
 ExportType = "Map" # Default
@@ -128,9 +129,10 @@ class ImportDestinyCfg(Operator, ImportHelper):
             box.operator("wm.url_open", text="Get Latest Release").url = "https://github.com/DeltaDesigns/d2-map-importer-addon/releases/latest"
 
     def execute(self, context):
-        global Cfg, Name, Type, ExportType, FilePath
+        global Cfg, Name, Type, ExportType, FilePath, AssetsPath
         Cfg = None
         FilePath = None
+        AssetsPath = None
         Name = None
         Type = "Statics"
         ExportType = "Map"
@@ -165,6 +167,9 @@ class ImportDestinyCfg(Operator, ImportHelper):
                     bpy.data.objects.remove(obj, do_unlink=True)
                 bpy.data.collections.remove(collection, do_unlink=True)
 
+            # The final cleanup
+            cleanup()
+
         return {'FINISHED'} # Lets Blender know the operator finished successfully.
 
 # Import everything model needed first for performance reasons, if importing a map
@@ -191,10 +196,10 @@ def PrepareMapImport(self, file):
             hash_import_list.append(mesh)
             
             if Cfg["Type"] != "Terrain":
-                if not ImportFBX(self, os.path.join(f'{FilePath}\\Models\\{Type}', f"{mesh}.fbx")):
+                if not ImportFBX(self, os.path.join(f'{AssetsPath}', f"Models\\{Type}\\{mesh}.fbx")):
                     continue
             else:
-                files = glob.glob(os.path.join(f'{FilePath}\\Models\\{Type}', f"{mesh}*.fbx"))
+                files = glob.glob(os.path.join(f'{AssetsPath}', f"Models\\{Type}\\{mesh}*.fbx"))
                 for file in files:
                     if not ImportFBX(self, file):
                         continue
@@ -242,7 +247,7 @@ def DoImport(self):
         bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[str(Name)]
 
         # Import single FBX if not a map
-        mesh_file = os.path.join(f'{FilePath}\\', f'{Cfg["MeshName"]}.fbx')
+        mesh_file = os.path.join(f'{AssetsPath}', f'{Cfg["MeshName"]}.fbx')
         if not ImportFBX(self, mesh_file):
             return
         
