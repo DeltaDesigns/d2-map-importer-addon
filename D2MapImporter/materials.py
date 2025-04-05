@@ -20,6 +20,10 @@ def assign_materials():
 
     for part_name, part_data in globals.Cfg["Parts"].items():
         for geom_name, material_hash in part_data.items():
+            if not os.path.exists(os.path.join(globals.AssetsPath, f'Materials\\{material_hash}.json')):
+                print(f"Could not material {material_hash}.Json in '{globals.FilePath}\\Materials', skipping...")
+                continue
+
             with open(os.path.join(globals.AssetsPath, f'Materials\\{material_hash}.json'), 'r') as f:
                 data = json.load(f)
             
