@@ -24,7 +24,7 @@ def add_decal_planes(self):
 
     for name, data in Cfg.items():
         if bpy.data.materials.get(name) is None:
-            create_material(self, name)
+            create_material(name)
 
         plane = bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0, 0))
         plane = bpy.context.view_layer.objects.active
