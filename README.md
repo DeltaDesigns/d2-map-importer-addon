@@ -13,7 +13,7 @@ How to use: https://github.com/DeltaDesigns/Charm/wiki/Blender-Importing
 
 # What it CAN'T do:
 - Materials for anything that isnt player gear. Due to the inconsistency of in-game shaders, they will have to be manually recreated
-- Map decals
+- Map decals (Projected decals, you can import simple planes at decal locations)
 - File your taxes
 - Uhhhhh probably something else I can't think of right now
 
