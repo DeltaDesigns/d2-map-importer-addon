@@ -6,8 +6,6 @@ import D2MapImporter.helper_functions as Helpers
 import json
 
 def assign_gear_shader():
-    fix_dupe_bones()
-
     if bpy.data.materials.get(f"D2GearShader") is None:
         addon_dir = os.path.dirname(__file__)
         full_path = os.path.join(addon_dir, "blends/D2GearShader.blend")
@@ -139,12 +137,19 @@ def fix_dupe_bones():
             if part[1].isnumeric():
                 print(f'Deleted duplicate bone: {bone.name}')
                 armature.edit_bones.remove(bone)
-        else:
+        elif(checkHex(bone.name)):
             key = str(int.from_bytes(bytes.fromhex(bone.name), byteorder="little"))
             if key in name_mappings:
                 bone.name = name_mappings[key]
 
     bpy.ops.object.mode_set(mode='OBJECT')
+
+def checkHex(s):
+    for ch in s:
+        if ((ch < '0' or ch > '9') and
+            (ch < 'A' or ch > 'F')):
+            return False
+    return True
 
 name_mappings = {
     #Player

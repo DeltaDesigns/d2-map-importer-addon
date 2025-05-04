@@ -120,7 +120,7 @@ def CombineMeshes():
     try:
         for meshes, mesh in globals.Cfg["Parts"].items():
             bpy.ops.object.select_all(action='DESELECT')
-            print(f"Combining meshes for '{meshes}':")
+            #print(f"Combining meshes for '{meshes}':")
 
             first_obj = None  # Track the first valid object to set as active
             objects_to_join = []

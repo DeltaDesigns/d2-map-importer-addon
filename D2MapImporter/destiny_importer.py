@@ -5,6 +5,7 @@ import json
 import os
 import requests
 import json
+import time
 
 from .helper_functions import *
 from .materials import *
@@ -53,6 +54,12 @@ class ImportDestinyCfg(Operator, ImportHelper):
     files: CollectionProperty(
             name="File Path",
             type=bpy.types.OperatorFileListElement,
+            )
+
+    rename_bones: BoolProperty(
+            name="Rename Bones",
+            description="Renames Bones/Vertex Groups to real names if they are known",
+            default=False,
             )
 
     merge_meshes: BoolProperty(
@@ -111,6 +118,7 @@ class ImportDestinyCfg(Operator, ImportHelper):
         box = layout.box()
         box.label(text="Current Version: " + current_version)
         box.label(text="Options:")
+        box.prop(self, 'rename_bones')
         box.prop(self, 'merge_meshes')
         box.prop(self, 'use_import_materials')
         box.prop(self, 'import_lights')
@@ -137,6 +145,7 @@ class ImportDestinyCfg(Operator, ImportHelper):
         Type = "Statics"
         ExportType = "Map"
 
+        start_time = time.time()
         # Deselect all objects just in case
         bpy.ops.object.select_all(action='DESELECT')
 
@@ -160,16 +169,23 @@ class ImportDestinyCfg(Operator, ImportHelper):
             if self.import_decal_planes:
                 add_decal_planes(self)
 
+            print("Removing Temp collection")
             hash_import_list.clear()
             collection = bpy.data.collections.get("Import_Temp")
             if collection:
-                for obj in collection.objects:
-                    bpy.data.objects.remove(obj, do_unlink=True)
+                # for obj in collection.objects:
+                #     bpy.data.objects.remove(obj, do_unlink=True)
                 bpy.data.collections.remove(collection, do_unlink=True)
 
             # The final cleanup
             cleanup()
 
+        end_time = time.time()
+        elapsed_seconds = end_time - start_time
+
+        minutes = int(elapsed_seconds // 60)
+        seconds = int(elapsed_seconds % 60)
+        print(f"Import finished in {minutes} minutes and {seconds} seconds")
         return {'FINISHED'} # Lets Blender know the operator finished successfully.
 
 # Import everything model needed first for performance reasons, if importing a map
@@ -190,6 +206,8 @@ def PrepareMapImport(self, file):
         bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children["Import_Temp"]
 
         # Import FBX files for all meshes
+        i = 1
+        cleanup_factor = 0
         for mesh, instances in Cfg["Instances"].items():
             if mesh not in Cfg["Parts"] or mesh in hash_import_list:
                 continue
@@ -203,9 +221,20 @@ def PrepareMapImport(self, file):
                 for file in files:
                     if not ImportFBX(self, file):
                         continue
+
+            print(f'{i}/{len(Cfg["Instances"])}')
+            i+=1
+            cleanup_factor+=1
+            if cleanup_factor >= 300: # TODO this might be stupid
+                #break
+                cleanup()
+                cleanup_factor = 0
+
         if self.merge_meshes: 
             CombineMeshes()
+
         cleanup()
+        
         
 
 # Where all the fun happens..
@@ -262,6 +291,9 @@ def DoImport(self):
         assign_materials()
         if "API" in Type or "D1API" in Type:
             assign_gear_shader()
+
+    if self.rename_bones or "API" in Type or "D1API" in Type:
+        fix_dupe_bones()
 
     # Add terrain dyemaps if applicable
     if "Terrain" in Type and "TerrainDyemaps" in Cfg:
