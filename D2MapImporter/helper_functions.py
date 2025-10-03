@@ -51,12 +51,18 @@ def add_to_collection(name):
             coll_target.objects.link(ob)
 
 def GetCfgParts():
-    Parts = [] 
-    for meshes, mesh in globals.Cfg["Parts"].items():
-        for part, material in mesh.items():
+    Parts = []
+    for name, mesh in globals.Cfg["Parts"].items():
+        # New format
+        if "PartMaterials" in mesh:
+            part_materials = mesh["PartMaterials"]
+        else: # Old format
+            part_materials = mesh
+            
+        for part, material in part_materials.items():
             obj = bpy.data.objects.get(part)
             if not obj:
-                continue 
+                continue
             Parts.append(obj)
     return Parts
 
@@ -118,14 +124,20 @@ def duplicate_armature_with_children(armature):
 
 def CombineMeshes():
     try:
-        for meshes, mesh in globals.Cfg["Parts"].items():
+        for mesh in globals.Cfg["Parts"].items():
+            # New format
+            if "PartMaterials" in mesh:
+                part_materials = mesh["PartMaterials"]
+            else: # Old format
+                part_materials = mesh
+
             bpy.ops.object.select_all(action='DESELECT')
             #print(f"Combining meshes for '{meshes}':")
 
             first_obj = None  # Track the first valid object to set as active
             objects_to_join = []
 
-            for part, material in mesh.items():
+            for part, material in part_materials.items():
                 obj = bpy.data.objects.get(part)
                 if not obj:
                     continue
@@ -211,8 +223,15 @@ def process_instancing(self, sorted_files):
 def instance_mesh(mesh, instances):
     """Handles the instancing and transformation of meshes."""
     entity_copied = False
-    for part, material in globals.Cfg["Parts"][mesh].items(): 
-        #obj = bpy.data.objects.get(part)
+
+    mesh_entry = globals.Cfg["Parts"][mesh]
+    # New format
+    if "PartMaterials" in mesh_entry:
+        part_materials = mesh_entry["PartMaterials"]
+    else: # Old format
+        part_materials = mesh_entry
+
+    for part, material in part_materials.items():
         obj = bpy.data.collections.get("Import_Temp").objects.get(part)
         if obj is None or entity_copied:
             continue

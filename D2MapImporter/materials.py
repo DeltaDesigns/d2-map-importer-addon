@@ -18,8 +18,14 @@ def assign_materials():
     
     #json_files = [f for f in os.listdir(f'{globals.FilePath}\\Materials') if f.endswith(".json")]
 
-    for part_name, part_data in globals.Cfg["Parts"].items():
-        for geom_name, material_hash in part_data.items():
+    for name, mesh in globals.Cfg["Parts"].items():
+        # New format
+        if "PartMaterials" in mesh:
+            part_materials = mesh["PartMaterials"]
+        else: # Old format
+            part_materials = mesh
+
+        for geom_name, material_hash in part_materials.items():
             create_material(material_hash)
 
 def find_nodes_by_type(material, node_type):
