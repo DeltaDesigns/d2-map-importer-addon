@@ -192,7 +192,8 @@ def prepare_and_process_map(self, sorted_files):
         globals.Name = globals.Cfg["MeshName"]
         globals.Type = globals.Cfg["Type"]
         globals.ExportType = globals.Cfg["ExportType"]
-        if "UnifiedAssets" in globals.Cfg and globals.Cfg["UnifiedAssets"] is True:
+        
+        if "UnifiedAssets" in globals.Cfg and globals.Cfg["UnifiedAssets"] is True and globals.ExportType is "Map":
             globals.AssetsPath = globals.Cfg["AssetsPath"]
         else:
             globals.AssetsPath = globals.FilePath
