@@ -185,7 +185,7 @@ def prepare_and_process_map(self, sorted_files):
         print(f"Size: {size} bytes")
 
         # Load configuration
-        globals.Cfg = load_cfg(globals.FilePath + f"\\{file.name}")
+        globals.Cfg = load_cfg(os.path.join(globals.FilePath, file.name))
         if "ExportType" not in globals.Cfg:
             raise ImportError("You are trying to import an old cfg file. Only exports from Charm v2.5.0 or higher are supported on this version!")
         
@@ -211,7 +211,7 @@ def process_instancing(self, sorted_files):
             continue
 
         # Load configuration
-        globals.Cfg = load_cfg(globals.FilePath + f"\\{file.name}")
+        globals.Cfg = load_cfg(os.path.join(globals.FilePath, file.name))
         
         globals.Name = globals.Cfg["MeshName"]
         globals.Type = globals.Cfg["Type"]
