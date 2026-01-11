@@ -41,13 +41,16 @@ def add_lights(self):
                 light_object.data.color = color
                 light_object.data.energy = self.light_intensity_override
                 light_object.data.use_shadow = False
-                light_object.data.cycles.use_shadow = False
+                if bpy.app.version < (5, 0, 0):
+                    light_object.data.cycles.use_shadow = False
+
                 light_object.data.use_custom_distance = True
 
                 if light_object.data.type == 'SPOT':
                     if data["Type"] == "Shadowing":
                         light_object.data.use_shadow = True 
-                        light_object.data.cycles.use_shadow = True
+                        if bpy.app.version < (5, 0, 0):
+                            light_object.data.cycles.use_shadow = False
                         #light_object.data.energy = self.light_intensity_override * light_object.data.color.v # meh
                         
                     light_object.data.spot_size = instance["Scale"][0]
