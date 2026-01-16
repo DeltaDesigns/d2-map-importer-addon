@@ -6,8 +6,8 @@ import os
 
 def add_lights(self):
     print("Importing Lights...")
-    if not os.path.exists(globals.FilePath + f"\\Rendering\\Lights.json"):
-        print(f"Could not find Lights.Json in '{globals.FilePath}\\Rendering', skipping...")
+    if not os.path.exists(globals.FilePath + f"/Rendering/Lights.json"):
+        print(f"Could not find Lights.Json in '{globals.FilePath}/Rendering', skipping...")
         return
     
     if bpy.data.collections.get("Lights"):
@@ -18,7 +18,7 @@ def add_lights(self):
     bpy.context.scene.collection.children.link(bpy.data.collections["Lights"])
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children["Lights"]
 
-    with open(globals.FilePath + f"\\Rendering\\Lights.json", 'r') as f:
+    with open(globals.FilePath + f"/Rendering/Lights.json", 'r') as f:
         Cfg = json.load(f)
 
     for name, data in Cfg.items():

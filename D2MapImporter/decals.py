@@ -7,8 +7,8 @@ from .materials import *
 
 def add_decal_planes(self):
     print("Creating Decal planes...")
-    if not os.path.exists( globals.FilePath + f"\\Rendering\\Decals.json"):
-        print(f"Could not find Decals.Json in '{globals.FilePath}\\Rendering', skipping...")
+    if not os.path.exists( globals.FilePath + f"/Rendering/Decals.json"):
+        print(f"Could not find Decals.Json in '{globals.FilePath}/Rendering', skipping...")
         return
     
     if bpy.data.collections.get("Decal Planes"):
@@ -19,7 +19,7 @@ def add_decal_planes(self):
     bpy.context.scene.collection.children.link(bpy.data.collections["Decal Planes"])
     bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children["Decal Planes"]
    
-    with open(globals.FilePath + f"\\Rendering\\Decals.json", 'r') as f:
+    with open(globals.FilePath + f"/Rendering/Decals.json", 'r') as f:
         Cfg = json.load(f)
 
     for name, data in Cfg.items():

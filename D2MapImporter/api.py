@@ -18,7 +18,7 @@ def assign_gear_shader():
     for obj in Helpers.GetCfgParts():
         # Assign gear shader          
         # Kinda dumb way to check but it works
-        with open(os.path.join(globals.AssetsPath, f'Materials\\{obj.material_slots[0].name}.json'), 'r') as f:
+        with open(os.path.join(globals.AssetsPath, f'Materials/{obj.material_slots[0].name}.json'), 'r') as f:
             data = json.load(f)
 
         CanAssign = obj.type == 'MESH' and (any("GEAR" in item for item in data["Scopes"]) if globals.Type == "API" else any("Gear" in item for item in data["Externs"])) 

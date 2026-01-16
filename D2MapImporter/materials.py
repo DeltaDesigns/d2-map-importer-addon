@@ -16,7 +16,7 @@ def assign_materials():
                 if part[2].isnumeric() and part[0] in materials:
                     slt.material = materials.get(part[0])
     
-    #json_files = [f for f in os.listdir(f'{globals.FilePath}\\Materials') if f.endswith(".json")]
+    #json_files = [f for f in os.listdir(f'{globals.FilePath}/Materials') if f.endswith(".json")]
 
     for name, mesh in globals.Cfg["Parts"].items():
         # New format
@@ -152,11 +152,11 @@ def add_terrain_dyemaps(self):
                     # terrain_node.parent = frame_node
 
 def create_material(name):
-    if not os.path.exists(os.path.join(globals.AssetsPath, f'Materials\\{name}.json')):
-        print(f"Could not find material {name}.Json in '{globals.FilePath}\\Materials', skipping...")
+    if not os.path.exists(os.path.join(globals.AssetsPath, f'Materials/{name}.json')):
+        print(f"Could not find material {name}.Json in '{globals.FilePath}/Materials', skipping...")
         return
     
-    with open(os.path.join(globals.AssetsPath, f'Materials\\{name}.json'), 'r') as f:
+    with open(os.path.join(globals.AssetsPath, f'Materials/{name}.json'), 'r') as f:
         data = json.load(f)
             
     ps_textures = data["Material"]["Pixel"]["Textures"]

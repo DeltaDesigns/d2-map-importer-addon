@@ -214,10 +214,10 @@ def PrepareMapImport(self, file):
             hash_import_list.append(mesh)
             
             if Cfg["Type"] != "Terrain":
-                if not ImportFBX(self, os.path.join(f'{AssetsPath}', f"Models\\{Type}\\{mesh}.fbx")):
+                if not ImportFBX(self, os.path.join(f'{AssetsPath}', f"Models/{Type}/{mesh}.fbx")):
                     continue
             else:
-                files = glob.glob(os.path.join(f'{AssetsPath}', f"Models\\{Type}\\{mesh}*.fbx"))
+                files = glob.glob(os.path.join(f'{AssetsPath}', f"Models/{Type}/{mesh}*.fbx"))
                 for file in files:
                     if not ImportFBX(self, file):
                         continue
