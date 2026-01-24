@@ -11,7 +11,7 @@ def ImportFBX(self, modelPath):
         print(f'Importing FBX {modelPath}')
         bpy.ops.import_scene.fbx(filepath=modelPath,
                                 use_anim=False,
-                                use_custom_normals=True, 
+                                use_custom_normals= not any(x in globals.Type for x in ['Decorators', 'SpeedTrees']), 
                                 ignore_leaf_bones=False, 
                                 automatic_bone_orientation=True,
                                 global_scale=100.0, 
