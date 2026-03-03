@@ -7,7 +7,7 @@ How to use: https://github.com/DeltaDesigns/Charm/wiki/Blender-Importing
 
 # What it CAN do:
 - Assemble maps (Statics, Dynamics, lights and terrain)
-- Auto assign gear shaders and textures to Player Gear (excluding fx mesh and reticles)
+- Auto assign gear shaders and textures to Player Gear (excluding fx mesh and reticles). - Destiny only at the moment.
 - Compatible with DARE/DCG skeletons and IK Player Skeleton
 
 # What it CAN'T do:
