@@ -5,7 +5,7 @@ import json
 from .helper_functions import *
 
 def assign_materials():
-    print("Assigning materials...")
+    Helpers.log("Assigning materials...")
     global image_extension
     materials = bpy.data.materials
    
@@ -105,7 +105,7 @@ def add_terrain_dyemaps(self):
                         terrain_node.location = (20.0, 1200.0)  # Set the location of the node
                         terrain_node.node_tree = bpy.data.node_groups["Dyemap Converter"]
                     else:
-                        print(f"Failed to load node group.")
+                        Helpers.log(f"Failed to load node group.")
 
                     frame_node = matnodes.new(type='NodeFrame')
                     frame_node.label = "Terrain Dyemaps"
@@ -141,11 +141,11 @@ def add_terrain_dyemaps(self):
                                 if self.use_terrain_dyemap_output:
                                     material_copy.node_tree.links.new(terrain_node.outputs[0], material_copy.node_tree.nodes.get("Material Output").inputs[0])
                             except:
-                                print(f'{material_copy.name}: Index {input_index} out of range for terrain node group')
+                                Helpers.log(f'{material_copy.name}: Index {input_index} out of range for terrain node group')
 
                             tex_num += 1
                     except Exception as error:
-                        print(error)
+                        Helpers.log(error)
 
                     # frame_node = matnodes.new(type='NodeFrame')
                     # frame_node.label = "Have Fun..."
@@ -153,7 +153,7 @@ def add_terrain_dyemaps(self):
 
 def create_material(name):
     if not os.path.exists(os.path.join(globals.AssetsPath, f'Materials/{name}.json')):
-        print(f"Could not find material {name}.Json in '{globals.FilePath}/Materials', skipping...")
+        Helpers.log(f"Could not find material {name}.Json in '{globals.FilePath}/Materials', skipping...")
         return
     
     with open(os.path.join(globals.AssetsPath, f'Materials/{name}.json'), 'r') as f:
@@ -207,6 +207,6 @@ def create_material(name):
 
                 tex_num += 1
     except KeyError as keyE:
-        print(f"{keyE}: ", data["Hash"])
+        Helpers.log(f"{keyE}: ", data["Hash"])
     except Exception as e:
-        print(e)
+        Helpers.log(e)

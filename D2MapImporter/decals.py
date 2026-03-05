@@ -1,4 +1,5 @@
 import D2MapImporter.destiny_importer as globals
+import D2MapImporter.helper_functions as Helpers
 import bpy
 import mathutils
 import json
@@ -6,13 +7,13 @@ import os
 from .materials import *
 
 def add_decal_planes(self):
-    print("Creating Decal planes...")
+    Helpers.log("Creating Decal planes...")
     if not os.path.exists( globals.FilePath + f"/Rendering/Decals.json"):
-        print(f"Could not find Decals.Json in '{globals.FilePath}/Rendering', skipping...")
+        Helpers.log(f"Could not find Decals.Json in '{globals.FilePath}/Rendering', skipping...")
         return
     
     if bpy.data.collections.get("Decal Planes"):
-        print("Decals collection already exists, skipping...")
+        Helpers.log("Decals collection already exists, skipping...")
         return
 
     bpy.data.collections.new("Decal Planes")
@@ -48,4 +49,4 @@ def add_decal_planes(self):
                 plane = plane.copy()
                 bpy.context.collection.objects.link(plane)
 
-    print("Imported Decal Planes.")
+    Helpers.log("Imported Decal Planes.")

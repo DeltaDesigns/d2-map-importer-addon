@@ -1,17 +1,18 @@
 import D2MapImporter.destiny_importer as globals
+import D2MapImporter.helper_functions as Helpers
 import bpy
 import mathutils
 import json
 import os
 
 def add_lights(self):
-    print("Importing Lights...")
+    Helpers.log("Importing Lights...")
     if not os.path.exists(globals.FilePath + f"/Rendering/Lights.json"):
-        print(f"Could not find Lights.Json in '{globals.FilePath}/Rendering', skipping...")
+        Helpers.log(f"Could not find Lights.Json in '{globals.FilePath}/Rendering', skipping...")
         return
     
     if bpy.data.collections.get("Lights"):
-        print("Lights collection already exists, skipping...")
+        Helpers.log("Lights collection already exists, skipping...")
         return
 
     bpy.data.collections.new("Lights")
@@ -80,4 +81,4 @@ def add_lights(self):
             else:
                 light_object.rotation_quaternion = quat
 
-    print("Imported Lights.")
+    Helpers.log("Imported Lights.")

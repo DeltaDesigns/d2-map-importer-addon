@@ -6,6 +6,7 @@ import os
 import requests
 import json
 import time
+import D2MapImporter.helper_functions as Helpers
 
 from .helper_functions import *
 from .materials import *
@@ -18,8 +19,12 @@ from .decals import *
 from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty, FloatProperty
 from bpy.types import Operator
+from enum import Enum
 
 from multiprocessing import Process, cpu_count
+class TigerGame(Enum):
+    DESTINY = 0
+    MARATHON = 1
 
 # Globals for cfg related stuff
 Cfg = None
@@ -28,6 +33,7 @@ AssetsPath = None
 Name = None
 Type = "Statics"
 ExportType = "Map" # Default
+Game = TigerGame.DESTINY
 
 # Yes I shamelessly let chaptgpt help me redo a lot of this
 # Fuck blender python, its awful in my very personal opinion
@@ -100,15 +106,15 @@ class ImportDestinyCfg(Operator, ImportHelper):
             default=False,
             )
     
-    import_dyn_points: BoolProperty(
-            name="Import Dynamic Points",
-            description="Import empties for dynamic points (not very useful for normal users)",
-            default=False,
-            )
-    
     import_decal_planes: BoolProperty(
             name="Import Decal Planes",
             description="Import decals as planes, this is will not actually project them on surfaces",
+            default=False,
+            )
+
+    use_geo_node_instancing: BoolProperty(
+            name="Use Geo Node Instancing",
+            description="Uses Geometry Nodes for mesh instances (Statics and Decorators)",
             default=False,
             )
 
@@ -124,11 +130,11 @@ class ImportDestinyCfg(Operator, ImportHelper):
         box.prop(self, 'import_lights')
         box.prop(self, 'light_intensity_override')
         box.prop(self, 'override_light_color')
+        box.prop(self, 'use_geo_node_instancing')
 
         box2 = layout.box()
         box2.label(text="Misc:")
         box2.prop(self, 'use_terrain_dyemap_output')
-        box2.prop(self, 'import_dyn_points')
         box2.prop(self, 'import_decal_planes')
         
         if update_available:
@@ -137,7 +143,7 @@ class ImportDestinyCfg(Operator, ImportHelper):
             box.operator("wm.url_open", text="Get Latest Release").url = "https://github.com/DeltaDesigns/d2-map-importer-addon/releases/latest"
 
     def execute(self, context):
-        global Cfg, Name, Type, ExportType, FilePath, AssetsPath
+        global Cfg, Game, Name, Type, ExportType, FilePath, AssetsPath
         Cfg = None
         FilePath = None
         AssetsPath = None
@@ -156,7 +162,7 @@ class ImportDestinyCfg(Operator, ImportHelper):
             file_sizes = [(file, os.path.getsize(os.path.join(dirname, file.name))) for file in self.files]
             # Import Terrain first since it needs its transforms modified outside of instancing, then do biggest to smallest
             sorted_files = sorted(file_sizes, key=lambda x: (0 if "Terrain" in x[0].name else 1, -x[1])) 
-
+    
             # If a map, import every model from every cfg to save as much performance as possible
             prepare_and_process_map(self, sorted_files)
             
@@ -169,7 +175,7 @@ class ImportDestinyCfg(Operator, ImportHelper):
             if self.import_decal_planes:
                 add_decal_planes(self)
 
-            print("Removing Temp collection")
+            Helpers.log("Removing Temp collection")
             hash_import_list.clear()
             collection = bpy.data.collections.get("Import_Temp")
             if collection:
@@ -185,18 +191,21 @@ class ImportDestinyCfg(Operator, ImportHelper):
 
         minutes = int(elapsed_seconds // 60)
         seconds = int(elapsed_seconds % 60)
-        print(f"Import finished in {minutes} minutes and {seconds} seconds")
+        Helpers.log(f"Import finished in {minutes} minutes and {seconds} seconds")
         return {'FINISHED'} # Lets Blender know the operator finished successfully.
 
 # Import everything model needed first for performance reasons, if importing a map
 hash_import_list = []
 def PrepareMapImport(self, file):
-    print(f"Starting import on {ExportType} {Type}: {Name}")
+    Helpers.log(f"Starting import on {ExportType} {Type}: {Name}")
 
     if Cfg["ExportType"] == "Map":
         if bpy.data.collections.get(str(Name)):
-            print(f"Collection {str(Name)} already exists, skipping...")
+            Helpers.log(f"Collection {str(Name)} already exists, skipping...")
             return
+
+        if Game == TigerGame.MARATHON:
+            Helpers.log("!!!!Importing a Marathon map can take a VERY VERY LONG TIME!!!!")
 
         collection = bpy.data.collections.get("Import_Temp")
         if not collection:
@@ -222,7 +231,7 @@ def PrepareMapImport(self, file):
                     if not ImportFBX(self, file):
                         continue
 
-            print(f'{i}/{len(Cfg["Instances"])}')
+            Helpers.log(f'{i}/{len(Cfg["Instances"])}')
             i+=1
             cleanup_factor+=1
             if cleanup_factor >= 300: # TODO this might be stupid
@@ -235,8 +244,6 @@ def PrepareMapImport(self, file):
 
         cleanup()
         
-        
-
 # Where all the fun happens..
 def DoImport(self):
     # Merge meshes/create instances for maps only
@@ -247,9 +254,8 @@ def DoImport(self):
         space.clip_end = 1000000.0  
 
         # Make a collection with the name of the imported fbx for the objects
-
         if bpy.data.collections.get(str(Name)):
-            print(f"Collection {str(Name)} already exists, skipping...")
+            Helpers.log(f"Collection {str(Name)} already exists, skipping...")
             return
 
         bpy.data.collections.new(str(Name))
@@ -262,13 +268,13 @@ def DoImport(self):
                 continue
             
             # Instance the meshes with the necessary transformations
-            print(f'Instancing {mesh}')
-            instance_mesh(mesh, instances)
+            Helpers.log(f'Instancing {mesh}')
+            instance_mesh(self, mesh, instances)
 
     else:
         # Make a collection with the name of the imported fbx for the objects
         if bpy.data.collections.get(str(Name)):
-            print(f"Collection {str(Name)} already exists, skipping...")
+            Helpers.log(f"Collection {str(Name)} already exists, skipping...")
             return
 
         bpy.data.collections.new(str(Name))
@@ -364,7 +370,7 @@ def check_for_updates():
         return True
 
 def menu_func_import(self, context):
-    self.layout.operator(ImportDestinyCfg.bl_idname, text="Destiny Importer (.cfg)", icon_value=custom_icon_col["import"]['D2ICON'].icon_id)
+    self.layout.operator(ImportDestinyCfg.bl_idname, text="Tiger Importer (.cfg)", icon_value=custom_icon_col["import"]['D2ICON'].icon_id)
 
 def register_importer():
     import bpy.utils.previews

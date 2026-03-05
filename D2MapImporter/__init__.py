@@ -3,13 +3,13 @@ import importlib
 import sys
 
 bl_info = {
-    "name": "Destiny Importer",
+    "name": "Tiger Importer",
     "author": "DeltaDesigns, Montague/Monteven",
-    "version": (1, 4, 9),
+    "version": (1, 5, 0),
     "blender": (4, 0, 0),
     "location": "File > Import",
-    "description": "Import Destiny rips from Charm",
-    "warning": "Requires Charm v3.1.6 or higher!",
+    "description": "Import Destiny/Marathon rips from Charm/MIDA",
+    "warning": "Requires Charm v3.1.6 or higher for Destiny imports!",
     "category": "Import",
     "package": "destiny_importer"
     }

@@ -1,14 +1,16 @@
 import bpy
 import D2MapImporter.destiny_importer as globals
+import D2MapImporter.helper_functions as Helpers
 import os
 import glob
 import mathutils
 import json
 import gc
+import math
 
 def ImportFBX(self, modelPath):
     if os.path.isfile(modelPath):
-        print(f'Importing FBX {modelPath}')
+        Helpers.log(f'Importing FBX {modelPath}')
         bpy.ops.import_scene.fbx(filepath=modelPath,
                                 use_anim=False,
                                 use_custom_normals= not any(x in globals.Type for x in ['Decorators', 'SpeedTrees']), 
@@ -23,7 +25,7 @@ def ImportFBX(self, modelPath):
         #add_to_collection(globals.Name) 
         return True
     else:
-        print(f"Could not find FBX: {modelPath}")
+        Helpers.log(f"Could not find FBX: {modelPath}")
         return False
 
 def ShowMessageBox(message = "", title = "Message Box", icon = 'INFO'):
@@ -84,7 +86,7 @@ def GetTexture(image_name):
     return None
 
 def cleanup():
-    print(f"Cleaning up...")
+    Helpers.log(f"Cleaning up...")
     # if Is_Map(globals.Type):
     #     for obj in GetCfgParts():
     #         skele = obj.find_armature()
@@ -93,7 +95,7 @@ def cleanup():
     #         bpy.data.objects.remove(obj)
     gc.collect()
     bpy.ops.outliner.orphans_purge(do_recursive = True)
-    print("Done cleaning up!")
+    Helpers.log("Done cleaning up!")
 
 def duplicate_armature_with_children(armature):
     new_armature = armature.copy()
@@ -165,7 +167,7 @@ def CombineMeshes():
             # Deselect all after joining
             bpy.ops.object.select_all(action='DESELECT')
     except Exception as error:
-        print(f'{globals.Cfg["MeshName"]}: {error}')
+        Helpers.log(f'{globals.Cfg["MeshName"]}: {error}')
 
 def load_cfg(file_path):
     """Load and return the configuration from a file."""
@@ -176,29 +178,36 @@ def prepare_and_process_map(self, sorted_files):
     """Prepare and process files for map import."""
     for file, size in sorted_files:
         # Skip files based on conditions
-        if 'EntityPoints' in file.name and not self.import_dyn_points or file.name == "":
+        if file.name == "":
             continue
 
-        print(f"File: {file.name}")
-        print(f"Name: {file.name[:-9]}")
-        print(f"Path: {globals.FilePath}")
-        print(f"Size: {size} bytes")
+        Helpers.log(f"File: {file.name}")
+        Helpers.log(f"Name: {file.name[:-9]}")
+        Helpers.log(f"Path: {globals.FilePath}")
+        Helpers.log(f"Size: {size} bytes")
 
         # Load configuration
         globals.Cfg = load_cfg(os.path.join(globals.FilePath, file.name))
         if "ExportType" not in globals.Cfg:
             raise ImportError("You are trying to import an old cfg file. Only exports from Charm v2.5.0 or higher are supported on this version!")
         
+        if "Game" in globals.Cfg:
+            globals.Game = globals.TigerGame(globals.Cfg["Game"])
+            Helpers.log(f"Game: {globals.Game}")
+        else:
+            Helpers.log("'Game' property not found in cfg file. Update your Charm or MIDA!")
+            
         globals.Name = globals.Cfg["MeshName"]
         globals.Type = globals.Cfg["Type"]
         globals.ExportType = globals.Cfg["ExportType"]
-        
+        globals.AssetPath = globals.Cfg["AssetsPath"]
+
         if "UnifiedAssets" in globals.Cfg and globals.Cfg["UnifiedAssets"] is True and globals.ExportType is "Map":
             globals.AssetsPath = globals.Cfg["AssetsPath"]
         else:
             globals.AssetsPath = globals.FilePath
 
-        print(f"AssetsPath: {globals.AssetsPath}")
+        Helpers.log(f"AssetsPath: {globals.AssetsPath}")
 
         # Prepare map import first
         globals.PrepareMapImport(self, file)
@@ -207,10 +216,9 @@ def process_instancing(self, sorted_files):
     """Process the instancing logic after importing models."""
     for file, size in sorted_files:
         # Skip files based on conditions
-        if 'EntityPoints' in file.name and not self.import_dyn_points or file.name == "":
+        if file.name == "":
             continue
 
-        # Load configuration
         globals.Cfg = load_cfg(os.path.join(globals.FilePath, file.name))
         
         globals.Name = globals.Cfg["MeshName"]
@@ -221,7 +229,7 @@ def process_instancing(self, sorted_files):
         # Handle instancing for the map or model
         globals.DoImport(self)
 
-def instance_mesh(mesh, instances):
+def instance_mesh(self, mesh, instances):
     """Handles the instancing and transformation of meshes."""
     entity_copied = False
 
@@ -241,31 +249,123 @@ def instance_mesh(mesh, instances):
         if any(x in globals.Type for x in ['Decorators', 'SkyObjects', 'WaterDecals', 'RoadDecals']):
             obj.visible_shadow = False
 
+        if(len(instances) > 10000):
+            Helpers.log(f"{mesh} has {len(instances)} instances!!")
+
         # Creates instances
-        for i, instance in enumerate(instances):
-            # Handle armature duplication for skeleton-based meshes
-            armature = bpy.data.objects[part].find_armature()
-            if armature:
-                obj = armature 
+        if self.use_geo_node_instancing and any(x in globals.Type for x in ['Decorators', 'Statics']):
+            Helpers.log(f"Using Geometry Node instancing for {mesh}")
+            create_geometry_nodes_instancer(obj, instances)
+        else:
+            for i, instance in enumerate(instances):
+                #Helpers.log(f'{part}: {i}/{len(instances)}')
 
-            if armature:
-                obj = duplicate_armature_with_children(armature)
-                entity_copied = True
-            else:
-                obj = obj.copy()
-                bpy.context.collection.objects.link(obj)
+                # Handle armature duplication for skeleton-based meshes
+                armature = bpy.data.objects[part].find_armature()
+                if armature:
+                    obj = armature 
 
-            # Set instance transforms
-            location = instance["Translation"]
-            scale = instance["Scale"]
-            quat = mathutils.Quaternion([instance["Rotation"][3], instance["Rotation"][0], instance["Rotation"][1], instance["Rotation"][2]])
-            if globals.Type == "Terrain":
-                quat = mathutils.Quaternion([1,0,0,0])
+                if armature:
+                    obj = duplicate_armature_with_children(armature)
+                    entity_copied = True
+                else:
+                    obj = obj.copy()
+                    bpy.context.collection.objects.link(obj)
 
-            obj.location = location
-            obj.rotation_mode = 'QUATERNION'
-            obj.rotation_quaternion = quat
-            obj.scale = scale
+                # Set instance transforms
+                location = instance["Translation"]
+                scale = instance["Scale"]
+                quat = mathutils.Quaternion([instance["Rotation"][3], instance["Rotation"][0], instance["Rotation"][1], instance["Rotation"][2]])
+                if globals.Type == "Terrain":
+                    quat = mathutils.Quaternion([1,0,0,0])
 
-            #if i != len(instances) - 1:  # Don't copy if this was the last instance
+                obj.location = location
+                obj.rotation_mode = 'QUATERNION'
+                obj.rotation_quaternion = quat
+                obj.scale = scale
+
+def create_geometry_nodes_instancer(source_obj, instances):
+    # Need to reset original obj transforms first
+    quat = mathutils.Euler((0, 0, 0), 'XYZ')
+    source_obj.scale = [1,1,1]
+    source_obj.rotation_mode = 'XYZ'
+    source_obj.rotation_euler = quat
+
+    name = source_obj.name
+    positions = [inst["Translation"] for inst in instances]
+    mesh = bpy.data.meshes.new(name + "_Points")
+    mesh.from_pydata(positions, [], [])
+    mesh.update()
+
+    rot_attr = mesh.attributes.new(
+        name="instance_rotation",
+        type='FLOAT_VECTOR',
+        domain='POINT'
+    )
+
+    scale_attr = mesh.attributes.new(
+        name="instance_scale",
+        type='FLOAT_VECTOR',
+        domain='POINT'
+    )
+
+    for i, inst in enumerate(instances):
+        quat = mathutils.Quaternion([inst["Rotation"][3], inst["Rotation"][0], inst["Rotation"][1], inst["Rotation"][2]])
+        euler = quat.to_euler("XYZ")
+        rot_attr.data[i].vector = euler
+        scale_attr.data[i].vector = inst["Scale"]
+
+    points_obj = bpy.data.objects.new(name + "_PointsObj", mesh)
+    points_obj.data.materials.append(source_obj.data.materials[0])
+    bpy.context.collection.objects.link(points_obj)
+
+    modifier = points_obj.modifiers.new("GeometryNodes", "NODES")
+    node_group = bpy.data.node_groups.new(name + "_NodeTree", "GeometryNodeTree")
+    modifier.node_group = node_group
+
+    nodes = node_group.nodes
+    links = node_group.links
+    nodes.clear()
+
+    node_group.interface.new_socket(
+        name="Geometry",
+        in_out='INPUT',
+        socket_type="NodeSocketGeometry"
+    )
+
+    node_group.interface.new_socket(
+        name="Geometry",
+        in_out='OUTPUT',
+        socket_type="NodeSocketGeometry"
+    )
+
+    node_group.interface_update(bpy.context)
+
+    group_input = nodes.new("NodeGroupInput")
+    group_output = nodes.new("NodeGroupOutput")
+
+    instance_on_points = nodes.new("GeometryNodeInstanceOnPoints")
+    object_info = nodes.new("GeometryNodeObjectInfo")
+
+    rot_attr_node = nodes.new("GeometryNodeInputNamedAttribute")
+    rot_attr_node.data_type = 'FLOAT_VECTOR'
+    rot_attr_node.inputs["Name"].default_value = "instance_rotation"
+
+    scale_attr_node = nodes.new("GeometryNodeInputNamedAttribute")
+    scale_attr_node.data_type = 'FLOAT_VECTOR'
+    scale_attr_node.inputs["Name"].default_value = "instance_scale"
+
+    object_info.inputs["Object"].default_value = source_obj
+    object_info.transform_space = 'RELATIVE'
+
+    links.new(group_input.outputs["Geometry"], instance_on_points.inputs["Points"])
+    links.new(object_info.outputs["Geometry"], instance_on_points.inputs["Instance"])
+    links.new(rot_attr_node.outputs["Attribute"], instance_on_points.inputs["Rotation"])
+    links.new(scale_attr_node.outputs["Attribute"], instance_on_points.inputs["Scale"])
+    links.new(instance_on_points.outputs["Instances"], group_output.inputs["Geometry"])
+
+    return points_obj
+
+def log(string):
+    print(f"[Tiger Importer]: {string}")
                

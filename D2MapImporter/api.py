@@ -138,7 +138,7 @@ def fix_dupe_bones():
         if "." in bone.name:
             part = bone.name.split(".")
             if part[1].isnumeric():
-                print(f'Deleted duplicate bone: {bone.name}')
+                Helpers.log(f'Deleted duplicate bone: {bone.name}')
                 armature.edit_bones.remove(bone)
         elif(checkHex(bone.name)):
             key = str(int.from_bytes(bytes.fromhex(bone.name), byteorder="little"))
