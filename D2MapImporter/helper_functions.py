@@ -296,7 +296,7 @@ def create_geometry_nodes_instancer(source_obj, instances):
     mesh = bpy.data.meshes.new(name + "_Points")
     mesh.from_pydata(positions, [], [])
     mesh.update()
-
+  
     rot_attr = mesh.attributes.new(
         name="instance_rotation",
         type='FLOAT_VECTOR',
@@ -319,6 +319,31 @@ def create_geometry_nodes_instancer(source_obj, instances):
     points_obj.data.materials.append(source_obj.data.materials[0])
     bpy.context.collection.objects.link(points_obj)
 
+    # camera culling setup only works on blender 5.0+, and should only be used for decorators
+    if bpy.app.version < (5, 0, 0) or any(x in globals.Type for x in ['Statics']):
+        create_geometry_nodes_instancer_blender4(mesh, points_obj, source_obj, instances)
+    else:
+        node_group = bpy.data.node_groups.get("InstancerGeoNodes")
+        if node_group is None:
+            addon_dir = os.path.dirname(__file__)
+            full_path = os.path.join(addon_dir, "blends/Instancer.blend")
+            with bpy.data.libraries.load(full_path) as (data_from, data_to):
+                data_to.node_groups = ["InstancerGeoNodes"]
+            bpy.data.node_groups.get(f"InstancerGeoNodes").use_fake_user = True
+            node_group = bpy.data.node_groups.get("InstancerGeoNodes")
+
+        unique_group = node_group.copy()
+        unique_group.name = f"Instancer_{name}"
+
+        modifier = points_obj.modifiers.new("GeometryNodes", "NODES")
+        modifier.node_group = unique_group
+
+        nodes = unique_group.nodes
+        instancer = nodes.get("Instancer")
+        instancer.inputs["Object"].default_value = source_obj
+
+def create_geometry_nodes_instancer_blender4(mesh, points_obj, source_obj, instances):
+    name = source_obj.name
     modifier = points_obj.modifiers.new("GeometryNodes", "NODES")
     node_group = bpy.data.node_groups.new(name + "_NodeTree", "GeometryNodeTree")
     modifier.node_group = node_group
