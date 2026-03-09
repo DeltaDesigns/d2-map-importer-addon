@@ -141,7 +141,9 @@ def fix_dupe_bones():
                 Helpers.log(f'Deleted duplicate bone: {bone.name}')
                 armature.edit_bones.remove(bone)
         elif(checkHex(bone.name)):
-            key = str(int.from_bytes(bytes.fromhex(bone.name), byteorder="little"))
+            if len(bone.name) == 7: # stupid stupid stupid stupid
+                bone.name = bone.name + "0" 
+            key = str(int.from_bytes(bytes.fromhex(bone.name), byteorder= "little" if globals.Game == globals.TigerGame.DESTINY else "big"))
             if key in name_mappings:
                 bone.name = name_mappings[key]
 
