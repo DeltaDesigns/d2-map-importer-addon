@@ -393,4 +393,14 @@ def create_geometry_nodes_instancer_blender4(mesh, points_obj, source_obj, insta
 
 def log(string):
     print(f"[Tiger Importer]: {string}")
+
+def fnv1_32(data: str) -> int:
+    FNV_PRIME = 0x01000193
+    OFFSET_BASIS = 0x811C9DC5
+
+    hash_ = OFFSET_BASIS
+    for b in data.encode("utf-8"):
+        hash_ = (hash_ * FNV_PRIME) & 0xffffffff
+        hash_ ^= b
+    return hash_
                

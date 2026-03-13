@@ -1,9 +1,85 @@
+import mathutils
 import D2MapImporter.destiny_importer as globals
 import bpy
 import D2MapImporter.materials
 import os
 import D2MapImporter.helper_functions as Helpers
 import json
+
+def import_marathon_weapon():
+    Helpers.log(f"Importing Marathon Weapon {globals.Name}")
+    parent_armature = None
+    attachment_counter = 0
+    for name, mesh in sorted(globals.Cfg["Parts"].items(), key=lambda item: item[1]["SubType"]):
+        subtype = mesh["SubType"]
+        attachment_bone_index = mesh["AttachmentBoneIndex"]
+        if subtype == 2:
+            attachment_counter += 1
+    
+        location = mesh["TranslationOffset"]
+        rot = mesh["RotationOffset"]
+        quat = mathutils.Quaternion([rot[3], rot[0], rot[1], rot[2]])
+
+        part_materials = mesh["PartMaterials"]
+        for part, material in part_materials.items():
+            obj = bpy.data.objects.get(part)
+            #obj = bpy.data.collections.get(str(globals.Name)).objects.get(part)
+            if not obj:
+                continue
+
+            armature = obj.find_armature()
+            ### Offset applying ##
+            if armature:
+                if subtype == 1 and attachment_bone_index == -1: # weapon
+                    parent_armature = armature
+                    parent_armature.name = f"{globals.Name} Main Armature"
+
+                armature.location += mathutils.Vector(location)
+                armature.rotation_mode = 'QUATERNION'
+                armature.rotation_quaternion = quat @ obj.rotation_quaternion
+            else:
+                obj.location += mathutils.Vector(location)
+                obj.rotation_mode = 'QUATERNION'
+                obj.rotation_quaternion = quat @ obj.rotation_quaternion
+            ##################
+
+            # Applies Child Of constraints to the attachment parts
+            if subtype == 2 and parent_armature is not None: # weapon attachment
+                unique_id = format(Helpers.fnv1_32(str(globals.Name)), "X") # Dont like this but quick fix for importing mutiple weapons that share attachments
+                obj.name = f"{unique_id}_{part}"
+                target_obj = armature if armature else obj
+                if target_obj.users_collection:
+                    parent_collection = target_obj.users_collection[0]
+
+                    collection_name = f"{unique_id}_Attachment_{attachment_counter}"
+                    attachment_collection = bpy.data.collections.get(collection_name)
+                    if not attachment_collection:
+                        attachment_collection = bpy.data.collections.new(collection_name)
+                        parent_collection.children.link(attachment_collection)
+
+                    hierarchy = [target_obj] + list(target_obj.children_recursive)
+                    for o in hierarchy:
+                        if attachment_collection not in o.users_collection:
+                            attachment_collection.objects.link(o)
+
+                        for col in list(o.users_collection):
+                            if col != attachment_collection:
+                                col.objects.unlink(o)
+
+                bones = parent_armature.data.bones
+                if 0 <= attachment_bone_index < len(bones):
+                    bone_name = bones[attachment_bone_index].name
+                else:
+                    continue
+
+                constraint = target_obj.constraints.new(type='CHILD_OF')            
+                constraint.target = parent_armature
+                constraint.subtarget = bone_name
+                bpy.context.view_layer.update()
+                constraint.set_inverse_pending = True
+
+            if armature:
+                break
 
 def assign_gear_shader():
     if bpy.data.materials.get(f"D2GearShader") is None:

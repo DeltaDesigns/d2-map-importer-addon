@@ -286,30 +286,33 @@ def DoImport(self):
         if not ImportFBX(self, mesh_file):
             return
         
-        # Apply transforms if API type
-        if "API" in Type or "D1API" in Type:
-            for obj in GetCfgParts():
-                obj.select_set(True)
-                bpy.ops.object.transform_apply()
-
-        # object transform offsets
-        for name, mesh in globals.Cfg["Parts"].items():
-            if "TranslationOffset" in mesh:
-                location = mesh["TranslationOffset"]
-                rot = mesh["RotationOffset"]
-                quat = mathutils.Quaternion([rot[3], rot[0], rot[1], rot[2]])
-
+        if Game == TigerGame.MARATHON and "Weapon" in Type:
+            import_marathon_weapon()
+        else:
+            # Apply transforms if API type
+            if "API" in Type or "D1API" in Type:
                 for obj in GetCfgParts():
-                    armature = obj.find_armature()
-                    if armature:
-                        armature.location += mathutils.Vector(location)
-                        armature.rotation_mode = 'QUATERNION'
-                        armature.rotation_quaternion = quat @ obj.rotation_quaternion
-                        break
-                    
-                    obj.location += mathutils.Vector(location)
-                    obj.rotation_mode = 'QUATERNION'
-                    obj.rotation_quaternion = quat @ obj.rotation_quaternion
+                    obj.select_set(True)
+                    bpy.ops.object.transform_apply()
+
+            # object transform offsets
+            for name, mesh in globals.Cfg["Parts"].items():
+                if "TranslationOffset" in mesh:
+                    location = mesh["TranslationOffset"]
+                    rot = mesh["RotationOffset"]
+                    quat = mathutils.Quaternion([rot[3], rot[0], rot[1], rot[2]])
+
+                    for obj in GetCfgParts():
+                        armature = obj.find_armature()
+                        if armature:
+                            armature.location += mathutils.Vector(location)
+                            armature.rotation_mode = 'QUATERNION'
+                            armature.rotation_quaternion = quat @ obj.rotation_quaternion
+                            break
+                        
+                        obj.location += mathutils.Vector(location)
+                        obj.rotation_mode = 'QUATERNION'
+                        obj.rotation_quaternion = quat @ obj.rotation_quaternion
 
 
     # Assign materials if enabled
