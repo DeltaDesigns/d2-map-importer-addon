@@ -23,7 +23,14 @@ def import_marathon_weapon():
         part_materials = mesh["PartMaterials"]
         for part, material in part_materials.items():
             obj = bpy.data.objects.get(part)
-            #obj = bpy.data.collections.get(str(globals.Name)).objects.get(part)
+            if not obj:
+                continue
+            # Maybe do for all Marathon imports? blend file size could become an issue maybe tho?
+            Helpers.store_vertex_positions_attribute(obj)
+            Helpers.store_split_normals_attribute(obj)
+
+        for part, material in part_materials.items():
+            obj = bpy.data.objects.get(part)
             if not obj:
                 continue
 

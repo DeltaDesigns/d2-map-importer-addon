@@ -391,6 +391,76 @@ def create_geometry_nodes_instancer_blender4(mesh, points_obj, source_obj, insta
 
     return points_obj
 
+def store_split_normals_attribute(
+    object=None,
+	attr_name="raw_vertex_norm",
+    flag_attr_name="has_raw_norm"):
+
+    if object is None:
+        log("No object passed? This shouldn't happen.")
+        return
+
+    if bpy.context.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    mesh = object.data
+    if attr_name in mesh.attributes:
+        attr = mesh.attributes[attr_name]
+    else:
+        attr = mesh.attributes.new(
+            name=attr_name,
+            type='FLOAT_VECTOR',
+            domain='CORNER'
+        )
+
+    if flag_attr_name in mesh.attributes:
+        flag_attr = mesh.attributes[flag_attr_name]
+    else:
+        flag_attr = mesh.attributes.new(
+            name=flag_attr_name,
+            type='FLOAT_VECTOR',
+            domain='CORNER'
+        )
+
+    for i, loop in enumerate(mesh.loops):
+        attr.data[i].vector = loop.normal
+        flag_attr.data[i].vector = (1,1,1)
+
+def store_vertex_positions_attribute(
+    object=None,
+    attr_name="raw_vertex_pos",
+    flag_attr_name="has_raw_pos"):
+
+    if object is None:
+        log("No object passed? This shouldn't happen.")
+        return
+
+    if bpy.context.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    mesh = object.data
+    if attr_name in mesh.attributes:
+        attr = mesh.attributes[attr_name]
+    else:
+        attr = mesh.attributes.new(
+            name=attr_name,
+            type='FLOAT_VECTOR',
+            domain='POINT'
+        )
+
+    if flag_attr_name in mesh.attributes:
+        flag_attr = mesh.attributes[flag_attr_name]
+    else:
+        flag_attr = mesh.attributes.new(
+            name=flag_attr_name,
+            type='FLOAT_VECTOR',
+            domain='POINT'
+        )
+
+    for i, vert in enumerate(mesh.vertices):
+        attr.data[i].vector = vert.co
+        flag_attr.data[i].vector = (1,1,1)
+
 def log(string):
     print(f"[Tiger Importer]: {string}")
 
