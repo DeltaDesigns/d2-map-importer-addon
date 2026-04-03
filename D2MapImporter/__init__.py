@@ -9,7 +9,6 @@ bl_info = {
     "blender": (4, 0, 0),
     "location": "File > Import",
     "description": "Import Destiny/Marathon rips from Charm/MIDA",
-    "warning": "Requires Charm v3.1.6 or higher for Destiny imports!",
     "category": "Import",
     "package": "destiny_importer"
     }
