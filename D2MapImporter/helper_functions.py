@@ -202,7 +202,7 @@ def prepare_and_process_map(self, sorted_files):
         globals.ExportType = globals.Cfg["ExportType"]
         globals.AssetPath = globals.Cfg["AssetsPath"]
 
-        if "UnifiedAssets" in globals.Cfg and globals.Cfg["UnifiedAssets"] is True and globals.ExportType is "Map":
+        if ("UnifiedAssets" in globals.Cfg) and (globals.Cfg["UnifiedAssets"] == True) and (globals.ExportType == "Map"):
             globals.AssetsPath = globals.Cfg["AssetsPath"]
         else:
             globals.AssetsPath = globals.FilePath
