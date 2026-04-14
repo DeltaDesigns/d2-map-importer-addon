@@ -1,5 +1,5 @@
-# Destiny 2 Importer Addon for Blender 4.0+
-Simple Blender addon that simplifies importing Destiny 2 (and now Marathon) rips from Charm/MIDA
+# Destiny 2/Marathon Importer Addon for Blender 4.0+
+Simple Blender addon that simplifies importing Destiny 2 and Marathon rips from Charm/MIDA
 
 Install like a normal Blender addon. **(install the zip from [Releases](https://github.com/DeltaDesigns/d2-map-importer-addon/releases), not just the py)**
 
