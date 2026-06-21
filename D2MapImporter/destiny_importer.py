@@ -20,8 +20,8 @@ from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty, CollectionProperty, FloatProperty
 from bpy.types import Operator
 from enum import Enum
-
 from multiprocessing import Process, cpu_count
+
 class TigerGame(Enum):
     DESTINY = 0
     MARATHON = 1
@@ -122,6 +122,11 @@ class ImportDestinyCfg(Operator, ImportHelper):
         layout = self.layout
 
         box = layout.box()
+        if update_available:
+            box = layout.box()
+            box.label(text="Update available: " + latest_version)
+            box.operator("wm.url_open", text="Get Latest Release").url = "https://github.com/DeltaDesigns/d2-map-importer-addon/releases/latest"
+
         box.label(text="Current Version: " + current_version)
         box.label(text="Options:")
         box.prop(self, 'rename_bones')
@@ -137,11 +142,6 @@ class ImportDestinyCfg(Operator, ImportHelper):
         box2.prop(self, 'use_terrain_dyemap_output')
         box2.prop(self, 'import_decal_planes')
         
-        if update_available:
-            box = layout.box()
-            box.label(text="Update available: " + latest_version)
-            box.operator("wm.url_open", text="Get Latest Release").url = "https://github.com/DeltaDesigns/d2-map-importer-addon/releases/latest"
-
     def execute(self, context):
         global Cfg, Game, Name, Type, ExportType, FilePath, AssetsPath
         Cfg = None

@@ -69,20 +69,17 @@ def GetCfgParts():
     return Parts
 
 def GetTexture(image_name):
-    # List of common image extensions
-    image_extensions = ['*.dds', '*.tga', '*.jpg', '*.jpeg', '*.png', '*.bmp', '*.gif', '*.tiff', '*.webp']
-
-    # Iterate through extensions and search for matching files
+    image_extensions = ['.dds', '.tga', '.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp']
+    textures_dir = glob.escape(os.path.join(globals.AssetsPath, "Textures"))
     for extension in image_extensions:
-        pattern = os.path.join(globals.AssetsPath, f"Textures/{image_name}{extension[1:]}")  # Remove '*' from extension
+        pattern = os.path.join(textures_dir, f"{image_name}{extension}")
         files = glob.glob(pattern)
-        if files:  # If any files are found, return the first one
-            if bpy.data.images.get(os.path.basename(files[0])) is None:
-                bpy.data.images.load(files[0], check_existing = True)
-                #print(f'Loaded {os.path.basename(files[0])}')
+        if files:
+            filename = os.path.basename(files[0])
+            if bpy.data.images.get(filename) is None:
+                bpy.data.images.load(files[0], check_existing=True)
 
-            img = os.path.basename(files[0])
-            return img
+            return filename
     return None
 
 def cleanup():
