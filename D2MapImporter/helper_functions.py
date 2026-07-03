@@ -123,7 +123,8 @@ def duplicate_armature_with_children(armature):
 
 def CombineMeshes():
     try:
-        for mesh in globals.Cfg["Parts"].items():
+        Helpers.log(f'Combing meshes for {globals.Cfg["MeshName"]}...')
+        for name, mesh in globals.Cfg["Parts"].items():
             # New format
             if "PartMaterials" in mesh:
                 part_materials = mesh["PartMaterials"]
@@ -131,7 +132,7 @@ def CombineMeshes():
                 part_materials = mesh
 
             bpy.ops.object.select_all(action='DESELECT')
-            #print(f"Combining meshes for '{meshes}':")
+            #Helpers.log(f"Combining meshes for '{name}':")
 
             first_obj = None  # Track the first valid object to set as active
             objects_to_join = []
@@ -164,7 +165,7 @@ def CombineMeshes():
             # Deselect all after joining
             bpy.ops.object.select_all(action='DESELECT')
     except Exception as error:
-        Helpers.log(f'{globals.Cfg["MeshName"]}: {error}')
+        Helpers.log(f'CombineMeshes: {globals.Cfg["MeshName"]}: {error}')
 
 def load_cfg(file_path):
     """Load and return the configuration from a file."""
@@ -460,6 +461,10 @@ def store_vertex_positions_attribute(
 
 def log(string):
     print(f"[Tiger Importer]: {string}")
+
+def log_debug(string):
+    if globals.print_debug_logs:
+        print(f"[Tiger Importer (Debug)]: {string}")
 
 def fnv1_32(data: str) -> int:
     FNV_PRIME = 0x01000193

@@ -145,7 +145,7 @@ def add_terrain_dyemaps(self):
 
                             tex_num += 1
                     except Exception as error:
-                        Helpers.log(error)
+                        Helpers.log(f"add_terrain_dyemaps: {error}")
 
                     # frame_node = matnodes.new(type='NodeFrame')
                     # frame_node.label = "Have Fun..."
@@ -153,14 +153,14 @@ def add_terrain_dyemaps(self):
 
 def create_material(name):
     if not os.path.exists(os.path.join(globals.AssetsPath, f'Materials/{name}.json')):
-        Helpers.log(f"Could not find material {name}.Json in '{globals.FilePath}/Materials', skipping...")
+        Helpers.log(f"Could not find material {name}.Json in '{globals.AssetsPath}/Materials', skipping...")
         return
     
     with open(os.path.join(globals.AssetsPath, f'Materials/{name}.json'), 'r') as f:
         data = json.load(f)
             
     ps_textures = data["Material"]["Pixel"]["Textures"]
-    vs_textures = data["Material"]["Vertex"]["Textures"]
+    #vs_textures = data["Material"]["Vertex"]["Textures"]
     
     try:
         material = bpy.data.materials.new(name=data["Hash"])
@@ -207,6 +207,6 @@ def create_material(name):
 
                 tex_num += 1
     except KeyError as keyE:
-        Helpers.log(f"{keyE}: ", data["Hash"])
+        Helpers.log(f"create_material: {keyE}: ", data["Hash"])
     except Exception as e:
-        Helpers.log(e)
+        Helpers.log(f"create_material: {e}")

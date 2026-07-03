@@ -117,6 +117,12 @@ class ImportDestinyCfg(Operator, ImportHelper):
             description="Uses Geometry Nodes for mesh instances (Statics and Decorators)",
             default=False,
             )
+    
+    debug_logs: BoolProperty(
+            name="Debug Logs",
+            description="Print debug logs to the console",
+            default=False,
+            )
 
     def draw(self, context):
         layout = self.layout
@@ -141,15 +147,17 @@ class ImportDestinyCfg(Operator, ImportHelper):
         box2.label(text="Misc:")
         box2.prop(self, 'use_terrain_dyemap_output')
         box2.prop(self, 'import_decal_planes')
+        box2.prop(self, 'debug_logs')
         
     def execute(self, context):
-        global Cfg, Game, Name, Type, ExportType, FilePath, AssetsPath
+        global Cfg, Game, Name, Type, ExportType, FilePath, AssetsPath, print_debug_logs
         Cfg = None
         FilePath = None
         AssetsPath = None
         Name = None
         Type = "Statics"
         ExportType = "Map"
+        print_debug_logs = self.debug_logs
 
         start_time = time.time()
         # Deselect all objects just in case
@@ -217,9 +225,18 @@ def PrepareMapImport(self, file):
         # Import FBX files for all meshes
         i = 1
         cleanup_factor = 0
+        total = len(Cfg["Instances"])
         for mesh, instances in Cfg["Instances"].items():
-            if mesh not in Cfg["Parts"] or mesh in hash_import_list:
+            if mesh not in Cfg["Parts"]:
+                Helpers.log(f'Mesh not in Cfg parts, this shouldnt happen!')
                 continue
+
+            Helpers.log(f'{i}/{total}')
+            i+=1
+            if mesh in hash_import_list:
+                Helpers.log_debug(f'Mesh {mesh} already in hash_import_list (scene), skipping')
+                continue
+            
             hash_import_list.append(mesh)
             
             if Cfg["Type"] != "Terrain":
@@ -231,11 +248,8 @@ def PrepareMapImport(self, file):
                     if not ImportFBX(self, file):
                         continue
 
-            Helpers.log(f'{i}/{len(Cfg["Instances"])}')
-            i+=1
             cleanup_factor+=1
-            if cleanup_factor >= 300: # TODO this might be stupid
-                #break
+            if cleanup_factor >= 425: # TODO this might be stupid
                 cleanup()
                 cleanup_factor = 0
 

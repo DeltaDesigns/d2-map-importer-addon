@@ -8,7 +8,7 @@ from .materials import *
 
 def add_decal_planes(self):
     Helpers.log("Creating Decal planes...")
-    if not os.path.exists( globals.FilePath + f"/Rendering/Decals.json"):
+    if not os.path.exists( globals.AssetsPath + f"/Rendering/Decals.json"):
         Helpers.log(f"Could not find Decals.Json in '{globals.FilePath}/Rendering', skipping...")
         return
     
