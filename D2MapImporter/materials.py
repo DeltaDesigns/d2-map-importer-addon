@@ -1,8 +1,9 @@
-import D2MapImporter.destiny_importer as globals
 import bpy
 import os
 import json
+
 from .helper_functions import *
+from . import destiny_importer as globals
 
 def assign_materials():
     Helpers.log("Assigning materials...")

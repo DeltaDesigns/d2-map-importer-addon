@@ -6,8 +6,8 @@ import os
 import requests
 import json
 import time
-import D2MapImporter.helper_functions as Helpers
 
+from . import helper_functions as Helpers
 from .helper_functions import *
 from .materials import *
 from .lights import *

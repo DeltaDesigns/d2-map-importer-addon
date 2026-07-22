@@ -1,9 +1,10 @@
-import D2MapImporter.destiny_importer as globals
-import D2MapImporter.helper_functions as Helpers
 import bpy
 import mathutils
 import json
 import os
+
+from . import destiny_importer as globals
+from . import helper_functions as Helpers
 from .materials import *
 
 def add_decal_planes(self):

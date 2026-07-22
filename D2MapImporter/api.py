@@ -1,10 +1,11 @@
 import mathutils
-import D2MapImporter.destiny_importer as globals
 import bpy
-import D2MapImporter.materials
 import os
-import D2MapImporter.helper_functions as Helpers
 import json
+
+from . import destiny_importer as globals
+from . import materials
+from . import helper_functions as Helpers
 
 def import_marathon_weapon():
     Helpers.log(f"Importing Marathon Weapon {globals.Name}")
@@ -113,30 +114,33 @@ def assign_gear_shader():
                 material_copy = bpy.data.materials.get(f"D2GearShader").copy()
                 material_copy.name = f"{obj.name[:8]}"
                 slot.material = material_copy
+                nodes = slot.material.node_tree.nodes
 
                 d_tex = Helpers.GetTexture(f'{obj.name[:8]}_albedo')
                 if d_tex:
                     diffuse = bpy.data.images.get(d_tex)
                     diffuse.colorspace_settings.name = "sRGB"
-                    slot.material.node_tree.nodes.get("Diffuse Texture").image = diffuse
+                    nodes.get("Diffuse Texture").image = diffuse
 
                 g_tex = Helpers.GetTexture(f'{obj.name[:8]}_gstack')
                 if g_tex:
                     gstack = bpy.data.images.get(g_tex)
                     gstack.colorspace_settings.name = "Non-Color"
-                    slot.material.node_tree.nodes.get("Gstack Texture").image = gstack
+                    nodes.get("Gstack Texture").image = gstack
 
                 n_tex = Helpers.GetTexture(f'{obj.name[:8]}_normal')
                 if n_tex:
                     normal = bpy.data.images.get(n_tex)
                     normal.colorspace_settings.name = "Non-Color"
-                    slot.material.node_tree.nodes.get("Normal Map").image = normal
+                    nodes.get("Normal Map").image = normal
 
                 dye_tex = Helpers.GetTexture(f'{obj.name[:8]}_dyemap')
                 if dye_tex:
                     dyemap = bpy.data.images.get(dye_tex)
                     dyemap.colorspace_settings.name = "Non-Color"
-                    slot.material.node_tree.nodes.get("Dyemap Texture").image = dyemap
+                    nodes.get("Dyemap Texture").image = dyemap
+                else: # 5.2+: Empty dyemap causes incorrect dyes due to a white alpha channel instead of black on previous blender versions
+                    nodes.remove(nodes.get("Dyemap Texture"))
 
                 if os.path.exists(path=f'{globals.AssetsPath}/{globals.Cfg["MeshName"]}.py'):
                     if bpy.data.node_groups.get(f'{globals.Cfg["MeshName"]}') is None:

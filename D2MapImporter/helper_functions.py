@@ -1,12 +1,13 @@
 import bpy
-import D2MapImporter.destiny_importer as globals
-import D2MapImporter.helper_functions as Helpers
 import os
 import glob
 import mathutils
 import json
 import gc
 import math
+
+from . import destiny_importer as globals
+from . import helper_functions as Helpers
 
 def ImportFBX(self, modelPath):
     if os.path.isfile(modelPath):
